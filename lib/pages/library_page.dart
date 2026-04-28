@@ -115,15 +115,8 @@ class _LibraryPageState extends State<LibraryPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Library'),
-        centerTitle: false,
-        flexibleSpace: const Align(
-          alignment: Alignment.bottomCenter,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: 10),
-            child: _MelodiLogo(),
-          ),
-        ),
+        title: const _MelodiLogo(),
+        centerTitle: true,
         actions: [
           if (_isScanning)
             const Padding(
@@ -657,18 +650,21 @@ class _MelodiLogo extends StatelessWidget {
       children: [
         SvgPicture.asset(
           'lily.svg',
-          width: 64,
-          height: 64,
+          width: 36,
+          height: 36,
+          fit: BoxFit.contain,
+          alignment: Alignment.center,
         ),
         const SizedBox(width: 8),
         const Text(
           'MELODI',
           style: TextStyle(
             color: color,
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
             letterSpacing: 4,
             fontFamily: 'Analogue BC',
+            height: 1.0,
           ),
         ),
       ],
