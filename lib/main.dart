@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:metadata_god/metadata_god.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'pages/library_page.dart';
 import 'pages/now_playing_page.dart';
 import 'pages/search_page.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  sqfliteFfiInit();
+  await MetadataGod.initialize();
   runApp(const MelodiApp());
 }
 
