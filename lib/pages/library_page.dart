@@ -650,22 +650,22 @@ class _MelodiLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const color = Color(0xFF6060ff);
+    const color = Color(0xFF1E4A9E);
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SvgPicture.asset(
           'lily.svg',
-          width: 28,
-          height: 28,
+          width: 42,
+          height: 42,
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
         const Text(
           'MELODI',
           style: TextStyle(
             color: color,
-            fontSize: 20,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             letterSpacing: 4,
             fontFamily: 'Analogue BC',
