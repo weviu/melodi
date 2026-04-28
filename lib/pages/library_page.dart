@@ -59,9 +59,20 @@ class _LibraryPageState extends State<LibraryPage> {
     setState(() => _isScanning = true);
     try {
       final songs = await _scanner.scanDirectory(dir);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Found ${songs.length} MP3 file(s)')),
+        );
+      }
       await _db.clearSongs();
       await _db.insertSongs(songs);
       await _loadFromDb();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Scan error: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isScanning = false);
     }
