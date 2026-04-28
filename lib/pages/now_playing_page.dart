@@ -116,12 +116,6 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              // Reserve space for top bar (~52), title+artist (~60),
-              // slider (~72), controls (~72), padding (~32)
-              final reserved = 52.0 + 60.0 + 72.0 + 72.0 + 32.0;
-              final artSize =
-                  (constraints.maxHeight - reserved).clamp(80.0, constraints.maxWidth - 80.0);
-
               return Column(
                 children: [
               // Top bar
@@ -143,36 +137,29 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.queue_music, color: Colors.white70),
-                      tooltip: 'Queue',
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const QueuePage()),
-                      ),
-                    ),
+                    const SizedBox(width: 48),
                   ],
                 ),
               ),
 
-              const Spacer(),
-
-              // Album art — sized to available height
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: SizedBox(
-                  width: artSize,
-                  height: artSize,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: song.albumArt != null
-                        ? Image.memory(song.albumArt!, fit: BoxFit.cover)
-                        : Container(
-                            color: const Color(0xFF282828),
-                            child: const Icon(Icons.music_note,
-                                size: 80, color: Colors.white24),
-                          ),
+              // Album art — fills all remaining vertical space
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: song.albumArt != null
+                            ? Image.memory(song.albumArt!, fit: BoxFit.cover)
+                            : Container(
+                                color: const Color(0xFF282828),
+                                child: const Icon(Icons.music_note,
+                                    size: 80, color: Colors.white24),
+                              ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -367,7 +354,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                 ],
               ),
 
-              const Spacer(),
+              const SizedBox(height: 12),
                 ],
               );
             },
