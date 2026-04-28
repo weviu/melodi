@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 
 import '../data/database_helper.dart';
 import '../data/song_model.dart';
+import '../services/download_provider.dart';
+import '../services/music_folder_provider.dart';
 import '../services/player_provider.dart';
 import '../services/scanner_service.dart';
 
@@ -27,6 +29,16 @@ class _LibraryPageState extends State<LibraryPage> {
   void initState() {
     super.initState();
     _loadFromDb();
+    // Reload whenever a download completes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DownloadProvider>().addListener(_loadFromDb);
+    });
+  }
+
+  @override
+  void dispose() {
+    context.read<DownloadProvider>().removeListener(_loadFromDb);
+    super.dispose();
   }
 
   Future<void> _loadFromDb() async {
@@ -56,6 +68,11 @@ class _LibraryPageState extends State<LibraryPage> {
         );
       }
       return;
+    }
+
+    // Persist folder so Search page can use it
+    if (mounted) {
+      await context.read<MusicFolderProvider>().setFolder(dir);
     }
 
     setState(() => _isScanning = true);

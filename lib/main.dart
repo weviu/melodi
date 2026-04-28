@@ -6,6 +6,8 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'pages/library_page.dart';
 import 'pages/now_playing_page.dart';
 import 'pages/search_page.dart';
+import 'services/download_provider.dart';
+import 'services/music_folder_provider.dart';
 import 'services/player_provider.dart';
 import 'widgets/mini_player.dart';
 
@@ -14,8 +16,12 @@ void main() async {
   sqfliteFfiInit();
   await MetadataGod.initialize();
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => PlayerProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => PlayerProvider()),
+        ChangeNotifierProvider(create: (_) => MusicFolderProvider()),
+        ChangeNotifierProvider(create: (_) => DownloadProvider()),
+      ],
       child: const MelodiApp(),
     ),
   );

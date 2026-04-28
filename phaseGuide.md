@@ -47,3 +47,36 @@ Tapping the mini-player should navigate to the full Now Playing page, which has:
 The player must continue playing when I navigate between tabs. Keep the playback logic in a state management solution (Provider or Riverpod) so it's accessible globally.
 
 Provide the full code for the player service, the mini-player widget, and the Now Playing page.
+
+
+# PHASE 4
+
+Build the search and download functionality.
+
+On the Search page, add a TextField that performs a YouTube search as the user types. Use the yt-dlp command-line tool to do the search (run it as a process with the flat_search or youtube:search prefix). Display results in a list with thumbnail, title, channel name, and duration.
+
+Add a download icon on each result. When tapped, use yt-dlp to download the best audio, extract it as MP3, and save it to the user's chosen music folder. Show a progress indicator during download. 
+
+Once downloaded, trigger a re-scan of the library so it appears in the Library tab immediately without manually refreshing.
+
+Also, tag the downloaded MP3 with proper metadata fetched from yt-dlp (title, artist) and embed the thumbnail as album art. Add a "bulk download" mode where I can select multiple results and download them sequentially.
+
+Write the full code for:
+- The search query to yt-dlp
+- The download pipe with progress
+- The metadata embedding
+- The library refresh triggerBuild the search and download functionality.
+
+On the Search page, add a TextField that performs a YouTube search as the user types. Use the yt-dlp command-line tool to do the search (run it as a process with the flat_search or youtube:search prefix). Display results in a list with thumbnail, title, channel name, and duration.
+
+Add a download icon on each result. When tapped, use yt-dlp to download the best audio, extract it as MP3, and save it to the user's chosen music folder. Show a progress indicator during download. 
+
+Once downloaded, trigger a re-scan of the library so it appears in the Library tab immediately without manually refreshing.
+
+Also, tag the downloaded MP3 with proper metadata fetched from yt-dlp (title, artist) and embed the thumbnail as album art. Add a "bulk download" mode where I can select multiple results and download them sequentially.
+
+Write the full code for:
+- The search query to yt-dlp
+- The download pipe with progress
+- The metadata embedding
+- The library refresh trigger
