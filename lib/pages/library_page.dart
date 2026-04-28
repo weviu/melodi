@@ -239,10 +239,11 @@ class _LibraryPageState extends State<LibraryPage> {
                         song: song,
                         allSongs: _songs,
                         onTap: () {
-                          context.read<PlayerProvider>().playSong(
+                          context.read<PlayerProvider>().playFromSource(
                                 song,
-                                queue: _songs,
+                                source: _songs,
                                 index: index,
+                                sourceName: 'Library',
                               );
                         },
                       );
@@ -376,7 +377,7 @@ class _SongTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onLongPress: () => _showContextMenu(context),
+      onSecondaryTap: () => _showContextMenu(context),
       child: ListTile(
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

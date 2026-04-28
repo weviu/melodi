@@ -264,6 +264,17 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   IconButton(
+                    iconSize: 28,
+                    icon: Icon(
+                      Icons.shuffle,
+                      color: player.isShuffled
+                          ? const Color(0xFF6060ff)
+                          : Colors.white54,
+                    ),
+                    onPressed: () => player.toggleShuffle(),
+                    tooltip: player.isShuffled ? 'Shuffle on' : 'Shuffle off',
+                  ),
+                  IconButton(
                     iconSize: 36,
                     icon: const Icon(Icons.skip_previous, color: Colors.white),
                     onPressed: () => player.previous(),
@@ -287,6 +298,8 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                     icon: const Icon(Icons.skip_next, color: Colors.white),
                     onPressed: () => player.next(),
                   ),
+                  // Placeholder to balance layout
+                  const SizedBox(width: 44),
                 ],
               ),
 
