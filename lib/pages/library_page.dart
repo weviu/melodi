@@ -662,7 +662,7 @@ class _MelodiLogo extends StatelessWidget {
             color: color,
             fontSize: 22,
             fontWeight: FontWeight.bold,
-            letterSpacing: 4,
+            letterSpacing: 2,
             fontFamily: 'Analogue BC',
             height: 1.0,
           ),
