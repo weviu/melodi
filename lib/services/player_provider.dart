@@ -36,6 +36,7 @@ class PlayerProvider extends ChangeNotifier {
   Duration get position => _position;
   Duration get duration => _duration;
   String get sourceName => _sourceName;
+  List<Song> get source => List.unmodifiable(_source);
 
   List<Song> get manualQueue => List.unmodifiable(_manualQueue);
 
