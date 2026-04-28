@@ -260,71 +260,105 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
               const SizedBox(height: 16),
 
               // Playback controls
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  IconButton(
-                    iconSize: 28,
-                    icon: const Icon(Icons.queue_music, color: Colors.white54),
-                    tooltip: 'Queue',
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const QueuePage()),
+              SizedBox(
+                height: 72,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // ── Centered: Prev / Play-Pause / Next ──────────────
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          iconSize: 36,
+                          icon: const Icon(Icons.skip_previous,
+                              color: Colors.white),
+                          onPressed: () => player.previous(),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            iconSize: 40,
+                            icon: Icon(
+                              player.isPlaying
+                                  ? Icons.pause
+                                  : Icons.play_arrow,
+                              color: Colors.black,
+                            ),
+                            onPressed: () => player.togglePlayPause(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          iconSize: 36,
+                          icon: const Icon(Icons.skip_next,
+                              color: Colors.white),
+                          onPressed: () => player.next(),
+                        ),
+                      ],
                     ),
-                  ),
-                  IconButton(
-                    iconSize: 28,
-                    icon: Icon(
-                      Icons.shuffle,
-                      color: player.isShuffled
-                          ? const Color(0xFF6060ff)
-                          : Colors.white54,
-                    ),
-                    onPressed: () => player.toggleShuffle(),
-                    tooltip: player.isShuffled ? 'Shuffle on' : 'Shuffle off',
-                  ),
-                  IconButton(
-                    iconSize: 36,
-                    icon: const Icon(Icons.skip_previous, color: Colors.white),
-                    onPressed: () => player.previous(),
-                  ),
-                  Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      iconSize: 40,
-                      icon: Icon(
-                        player.isPlaying ? Icons.pause : Icons.play_arrow,
-                        color: Colors.black,
+
+                    // ── Left: Queue + Shuffle ────────────────────────────
+                    Positioned(
+                      left: 8,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            iconSize: 26,
+                            icon: const Icon(Icons.queue_music,
+                                color: Colors.white54),
+                            tooltip: 'Queue',
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const QueuePage()),
+                            ),
+                          ),
+                          IconButton(
+                            iconSize: 26,
+                            icon: Icon(
+                              Icons.shuffle,
+                              color: player.isShuffled
+                                  ? const Color(0xFF6060ff)
+                                  : Colors.white54,
+                            ),
+                            onPressed: () => player.toggleShuffle(),
+                            tooltip: player.isShuffled
+                                ? 'Shuffle on'
+                                : 'Shuffle off',
+                          ),
+                        ],
                       ),
-                      onPressed: () => player.togglePlayPause(),
                     ),
-                  ),
-                  IconButton(
-                    iconSize: 36,
-                    icon: const Icon(Icons.skip_next, color: Colors.white),
-                    onPressed: () => player.next(),
-                  ),
-                  IconButton(
-                    iconSize: 28,
-                    icon: Icon(
-                      player.loopMode == LoopMode.loopSong
-                          ? Icons.repeat_one
-                          : Icons.repeat,
-                      color: player.loopMode == LoopMode.off
-                          ? Colors.white54
-                          : const Color(0xFF6060ff),
+
+                    // ── Right: Loop ──────────────────────────────────────
+                    Positioned(
+                      right: 8,
+                      child: IconButton(
+                        iconSize: 26,
+                        icon: Icon(
+                          player.loopMode == LoopMode.loopSong
+                              ? Icons.repeat_one
+                              : Icons.repeat,
+                          color: player.loopMode == LoopMode.off
+                              ? Colors.white54
+                              : const Color(0xFF6060ff),
+                        ),
+                        onPressed: () => player.cycleLoopMode(),
+                        tooltip: switch (player.loopMode) {
+                          LoopMode.off => 'Loop off',
+                          LoopMode.loopPlaylist => 'Loop playlist',
+                          LoopMode.loopSong => 'Loop song',
+                        },
+                      ),
                     ),
-                    onPressed: () => player.cycleLoopMode(),
-                    tooltip: switch (player.loopMode) {
-                      LoopMode.off => 'Loop off',
-                      LoopMode.loopPlaylist => 'Loop playlist',
-                      LoopMode.loopSong => 'Loop song',
-                    },
-                  ),
-                ],
+                  ],
+                ),
               ),
 
               const Spacer(),
