@@ -170,7 +170,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
     final coverArt = _songs.isNotEmpty ? _songs.first.albumArt : null;
 
     return SliverAppBar(
-      expandedHeight: 300,
+      expandedHeight: 400,
       pinned: true,
       stretch: true,
       backgroundColor: _dominantColor.withAlpha(230),
