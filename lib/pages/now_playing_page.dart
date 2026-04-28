@@ -249,38 +249,24 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
               // Playback controls
               Row(
                 children: [
-                  // Left: Loop + Queue
+                  // Left: Shuffle
                   Expanded(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
+                        const SizedBox(width: 12),
                         IconButton(
                           iconSize: 26,
                           icon: Icon(
-                            player.loopMode == LoopMode.loopSong
-                                ? Icons.repeat_one
-                                : Icons.repeat,
-                            color: player.loopMode == LoopMode.off
-                                ? Colors.white54
-                                : const Color(0xFF6060ff),
+                            Icons.shuffle,
+                            color: player.isShuffled
+                                ? const Color(0xFF6060ff)
+                                : Colors.white54,
                           ),
-                          onPressed: () => player.cycleLoopMode(),
-                          tooltip: switch (player.loopMode) {
-                            LoopMode.off => 'Loop off',
-                            LoopMode.loopPlaylist => 'Loop playlist',
-                            LoopMode.loopSong => 'Loop song',
-                          },
-                        ),
-                        IconButton(
-                          iconSize: 26,
-                          icon: const Icon(Icons.queue_music,
-                              color: Colors.white54),
-                          tooltip: 'Queue',
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const QueuePage()),
-                          ),
+                          onPressed: () => player.toggleShuffle(),
+                          tooltip: player.isShuffled
+                              ? 'Shuffle on'
+                              : 'Shuffle off',
                         ),
                       ],
                     ),
@@ -323,7 +309,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                     ],
                   ),
 
-                  // Right: Shuffle
+                  // Right: Loop + Queue
                   Expanded(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -331,16 +317,32 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                         IconButton(
                           iconSize: 26,
                           icon: Icon(
-                            Icons.shuffle,
-                            color: player.isShuffled
-                                ? const Color(0xFF6060ff)
-                                : Colors.white54,
+                            player.loopMode == LoopMode.loopSong
+                                ? Icons.repeat_one
+                                : Icons.repeat,
+                            color: player.loopMode == LoopMode.off
+                                ? Colors.white54
+                                : const Color(0xFF6060ff),
                           ),
-                          onPressed: () => player.toggleShuffle(),
-                          tooltip: player.isShuffled
-                              ? 'Shuffle on'
-                              : 'Shuffle off',
+                          onPressed: () => player.cycleLoopMode(),
+                          tooltip: switch (player.loopMode) {
+                            LoopMode.off => 'Loop off',
+                            LoopMode.loopPlaylist => 'Loop playlist',
+                            LoopMode.loopSong => 'Loop song',
+                          },
                         ),
+                        IconButton(
+                          iconSize: 26,
+                          icon: const Icon(Icons.queue_music,
+                              color: Colors.white54),
+                          tooltip: 'Queue',
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const QueuePage()),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
                       ],
                     ),
                   ),

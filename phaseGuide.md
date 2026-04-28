@@ -98,3 +98,41 @@ Build a Queue view accessible from the Now Playing page (a list icon in the top 
 When the current song finishes, automatically play the next one in the queue. If the queue is empty, stop.
 
 Provide the full code for playlist CRUD, the .m3u read/write service, the context menu, and the drag-and-drop queue UI.
+
+
+# PHASE 6 
+
+
+### The Queue System
+
+The queue is an ordered, editable list that dictates upcoming playback without disrupting the currently playing track.
+
+- **Access the Queue**: Tapping the queue icon (three horizontal lines) in the Now Playing screen.
+- **Visual Structure**: The queue is divided into two sections:
+    - **Now Playing**: The current track, displayed at the top.
+    - **Next Up**: Everything scheduled to play next, listed in order below.
+- **Managing Tracks**:
+    - **Reorder**: Long-press and drag a track by its handle (three lines on the right) to rearrange.
+    - **Remove**: Swipe left on a track to delete it, or tap the selection circle and hit "Remove."
+    - **Clear Queue**: A single button to wipe the entire "Next Up" list at once.
+- **What Happens When It Ends**: Once the queue is exhausted, playback stops. Spotify's auto-recommendation preview that follows is something you'll skip entirely in your app—just silence.
+
+---
+
+### The Context Menu (Three Dots)
+
+The context menu is the action hub for any song, album, or playlist.
+
+- **Add to Queue**: Sends the track to the "Next Up" list. It's always available and is the most-used action.
+- **Add to Playlist**: Opens a sub-menu of your playlists. Tap one to add the track, or use "New Playlist" at the top to create one on the spot.
+- **Go to Artist**: Navigates directly to the artist's page.
+- **Go to Album**: Navigates to the full album the track belongs to.
+- **Like / Save**: A heart icon to save the track to your Liked Songs library.
+- **Share**: Copy link or share to external apps.
+- **Remove from This Playlist**: Only appears when viewing a track inside a playlist you own.
+- **Hide Song**: For algorithm-generated playlists, tells Spotify never to play this track again in that specific playlist.
+
+
+# PHASE 7
+
+**Go to Song Radio**: Starts a radio station based on that track.
