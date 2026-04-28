@@ -249,12 +249,23 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
               // Playback controls
               Row(
                 children: [
-                  // Left: Shuffle
+                  // Left: Queue + Shuffle
                   Expanded(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 24),
+                        IconButton(
+                          iconSize: 26,
+                          icon: const Icon(Icons.queue_music,
+                              color: Colors.white54),
+                          tooltip: 'Queue',
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const QueuePage()),
+                          ),
+                        ),
                         IconButton(
                           iconSize: 26,
                           icon: Icon(
@@ -309,7 +320,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                     ],
                   ),
 
-                  // Right: Loop + Queue
+                  // Right: Loop
                   Expanded(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -331,18 +342,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                             LoopMode.loopSong => 'Loop song',
                           },
                         ),
-                        IconButton(
-                          iconSize: 26,
-                          icon: const Icon(Icons.queue_music,
-                              color: Colors.white54),
-                          tooltip: 'Queue',
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const QueuePage()),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 24),
                       ],
                     ),
                   ),
