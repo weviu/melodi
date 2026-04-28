@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../services/download_provider.dart';
 import '../services/music_folder_provider.dart';
 import '../services/yt_dlp_service.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -101,7 +102,7 @@ class _SearchPageState extends State<SearchPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Search'),
+        title: const _MelodiLogoSearch(),
         actions: [
           if (_results.isNotEmpty)
             TextButton.icon(
@@ -384,6 +385,39 @@ class _DownloadButton extends StatelessWidget {
           onPressed: onDownload,
         );
     }
+  }
+}
+
+class _MelodiLogoSearch extends StatelessWidget {
+  const _MelodiLogoSearch();
+
+  @override
+  Widget build(BuildContext context) {
+    const color = Color(0xFF1E4A9E);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SvgPicture.asset(
+          'lily.svg',
+          width: 36,
+          height: 36,
+          fit: BoxFit.contain,
+        ),
+        const SizedBox(width: 8),
+        const Text(
+          'MELODI',
+          style: TextStyle(
+            color: color,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 4,
+            fontFamily: 'Analogue BC',
+            height: 1.0,
+          ),
+        ),
+      ],
+    );
   }
 }
 
