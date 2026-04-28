@@ -369,6 +369,135 @@ class _QueueTile extends StatelessWidget {
   }
 }
 
+// ── Section header ─────────────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  final String label;
+  final LoopMode? loopMode;
+  const _SectionHeader({required this.label, this.loopMode});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 6),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white38,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+          if (loopMode != null && loopMode != LoopMode.off) ...[
+            const SizedBox(width: 6),
+            Icon(
+              loopMode == LoopMode.loopSong
+                  ? Icons.repeat_one
+                  : Icons.repeat,
+              size: 13,
+              color: const Color(0xFF6060ff),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Queue tile ─────────────────────────────────────────────────────────────
+
+class _QueueTile extends StatelessWidget {
+  final Song song;
+  final bool isCurrent;
+  final bool showRemove;
+  final VoidCallback? onRemove;
+  final VoidCallback? onTap;
+
+  const _QueueTile({
+    super.key,
+    required this.song,
+    this.isCurrent = false,
+    this.showRemove = false,
+    this.onRemove,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final player = context.watch<PlayerProvider>();
+
+    return ListTile(
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      leading: Stack(
+        alignment: Alignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: song.albumArt != null
+                  ? Image.memory(song.albumArt!, fit: BoxFit.cover)
+                  : Container(
+                      color: const Color(0xFF282828),
+                      child: const Icon(Icons.music_note,
+                          color: Colors.white24, size: 22),
+                    ),
+            ),
+          ),
+          if (isCurrent && player.isPlaying)
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.black45,
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: const Icon(Icons.volume_up,
+                  color: Colors.white, size: 18),
+            ),
+        ],
+      ),
+      title: Text(
+        song.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: isCurrent ? const Color(0xFF6060ff) : Colors.white,
+          fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+          fontSize: 14,
+        ),
+      ),
+      subtitle: Text(
+        song.artist,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(color: Colors.white54, fontSize: 12),
+      ),
+      trailing: showRemove
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.close,
+                      color: Colors.white38, size: 18),
+                  tooltip: 'Remove',
+                  onPressed: onRemove,
+                ),
+                const Icon(Icons.drag_handle,
+                    color: Colors.white24, size: 20),
+              ],
+            )
+          : null,
+      onTap: isCurrent ? null : onTap,
+    );
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
