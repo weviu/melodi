@@ -112,12 +112,6 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
           MaterialPageRoute(builder: (_) => const NowPlayingPage()),
         ),
       ),
-      bottomNavigationBar: MiniPlayer(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const NowPlayingPage()),
-        ),
-      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : CustomScrollView(
