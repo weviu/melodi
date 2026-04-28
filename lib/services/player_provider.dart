@@ -1,5 +1,5 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
 
 import '../data/song_model.dart';
 
@@ -21,24 +21,22 @@ class PlayerProvider extends ChangeNotifier {
   Duration get duration => _duration;
 
   PlayerProvider() {
-    _player.playerStateStream.listen((state) {
-      _isPlaying = state.playing;
+    _player.onPlayerStateChanged.listen((state) {
+      _isPlaying = state == PlayerState.playing;
       notifyListeners();
-      if (state.processingState == ProcessingState.completed) {
+      if (state == PlayerState.completed) {
         next();
       }
     });
 
-    _player.positionStream.listen((pos) {
+    _player.onPositionChanged.listen((pos) {
       _position = pos;
       notifyListeners();
     });
 
-    _player.durationStream.listen((dur) {
-      if (dur != null) {
-        _duration = dur;
-        notifyListeners();
-      }
+    _player.onDurationChanged.listen((dur) {
+      _duration = dur;
+      notifyListeners();
     });
   }
 
@@ -47,15 +45,14 @@ class PlayerProvider extends ChangeNotifier {
     if (queue != null) _queue = List.unmodifiable(queue);
     if (index != null) _currentIndex = index;
     notifyListeners();
-    await _player.setFilePath(song.filePath);
-    await _player.play();
+    await _player.play(DeviceFileSource(song.filePath));
   }
 
   Future<void> togglePlayPause() async {
-    if (_player.playing) {
+    if (_isPlaying) {
       await _player.pause();
     } else {
-      await _player.play();
+      await _player.resume();
     }
   }
 
