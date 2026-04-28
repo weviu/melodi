@@ -58,4 +58,11 @@ class PlaylistProvider extends ChangeNotifier {
     list.insert(newIndex, item);
     await _m3u.writePlaylist(_musicFolder!, playlistName, list);
   }
+
+  Future<void> removeSong(
+      String playlistName, int index, List<Song> songs) async {
+    if (_musicFolder == null) return;
+    final list = List<Song>.from(songs)..removeAt(index);
+    await _m3u.writePlaylist(_musicFolder!, playlistName, list);
+  }
 }

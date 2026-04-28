@@ -135,4 +135,74 @@ The context menu is the action hub for any song, album, or playlist.
 
 # PHASE 7
 
-**Go to Song Radio**: Starts a radio station based on that track.
+## The Main Playlist View
+
+When you open a playlist, this is what you see:
+
+### Header Area (top third of screen)
+
+- **Gradient background** sampled from the playlist cover art's dominant colors, fading into the dark background below. It's subtle but gives each playlist a distinct personality.
+- **Playlist cover art** on the left, about 200x200 pixels, with rounded corners (8px radius, not perfectly square), subtle drop shadow.
+- **Playlist title** in bold, large type (around 28px). If it's a long name, it wraps to two lines max.
+- **"Playlist" label** in all caps, small, above the title.
+- **Creator name** below the title: "by username" with a small avatar. Tapping the name goes to their profile.
+- **Song count and total duration** in a muted, smaller font: "72 songs, 4 hr 28 min"
+- **Action row** directly below the metadata:
+  - Green play button (large, circular, #1DB954)
+  - Shuffle button (white, smaller, interlocking arrows icon)
+  - Download toggle (down arrow in a circle, turns green when downloaded)
+  - Three-dot overflow menu (•••) — share, edit, make collaborative, etc.
+
+### Song List (below the header)
+
+- A **sticky header row** with column labels: #, Title, Artist, Album, Duration, and a clock icon for duration. This row disappears as you scroll down (replaced by the track list), but the header area collapses elegantly.
+- **Each row** is about 56px tall, with a subtle hover highlight (light gray overlay on desktop, none on mobile).
+- **Row layout (left to right):**
+  - Track number (muted, 16px, right-aligned)
+  - Album art thumbnail (40x40, 4px rounded corners)
+  - Title and artist stacked vertically. Title in white, artist in muted gray (smaller, 14px). If the track is "explicit," there's a tiny "E" badge.
+  - Album name (muted, truncated with ellipsis if too long)
+  - Duration (muted, right-aligned)
+- **Currently playing track** is highlighted: title turns Spotify green, and a small green speaker icon (equalizer bars) replaces the track number.
+- **Long press / right-click** on a track opens a context menu: Add to Queue, Add to Playlist, Go to Artist, Go to Album, Remove from Playlist, Share.
+
+### Sticky Playlist Header (as you scroll)
+
+When you scroll down past the header, a slim version pins to the top:
+- Playlist name (truncated) on the left
+- Green play button (small) on the right
+- Background blurs slightly (frosted glass effect)
+
+---
+
+## The Now Playing Screen
+
+This is the screen you see when actively listening, with the large album art.
+
+### Layout (top to bottom)
+
+- **Collapse handle** — a tiny gray pill shape at the very top, indicating you can swipe down to minimize.
+- **Album art** dominates the center. It's large (around 300x300), with a subtle drop shadow and rounded corners. It sits inside the full area, not edge-to-edge.
+- **Track title** below the art, bold, around 22px, one line.
+- **Artist name** below the title, linked (tappable), slightly smaller, muted.
+- **Progress bar** — a slim horizontal slider. The played portion is white (or green on premium), the remaining is dark gray. Current time on the left, total duration on the right, both in tiny monospace font.
+- **Playback controls** — centered row:
+  - Shuffle (small, left)
+  - Previous (medium)
+  - Play/Pause (largest, white circle with green play button on desktop; green border on mobile)
+  - Next (medium)
+  - Repeat (small, right). If repeat-one is active, a tiny "1" badge appears.
+- **Action row** below controls:
+  - Heart/like button (green outline when liked, filled green when tapped)
+  - Add to playlist (plus icon)
+  - Queue icon (three stacked lines)
+  - Share / Connect to device (varies by platform)
+- **Lyrics / Now Playing View toggle** — swiping left on the album art reveals synced lyrics (if available). Swiping right goes back to art.
+- **Background** — the dominant color of the album art, heavily blurred and darkened, fills the entire screen. It transitions smoothly when the track changes.
+
+### Subtle Animations
+
+- The play/pause button morphs smoothly (scale and icon change).
+- The progress bar glows slightly at the playhead.
+- Background color transitions over ~1 second when the next song starts.
+- Shuffle/repeat icons have a slight green tint and glow when active.
