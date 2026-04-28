@@ -9,6 +9,7 @@ import 'pages/search_page.dart';
 import 'services/download_provider.dart';
 import 'services/music_folder_provider.dart';
 import 'services/player_provider.dart';
+import 'services/playlist_provider.dart';
 import 'widgets/mini_player.dart';
 
 void main() async {
@@ -21,6 +22,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PlayerProvider()),
         ChangeNotifierProvider(create: (_) => MusicFolderProvider()),
         ChangeNotifierProvider(create: (_) => DownloadProvider()),
+        ChangeNotifierProvider(create: (_) => PlaylistProvider()),
       ],
       child: const MelodiApp(),
     ),

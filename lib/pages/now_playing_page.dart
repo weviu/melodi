@@ -5,6 +5,7 @@ import 'package:palette_generator/palette_generator.dart';
 import 'package:provider/provider.dart';
 
 import '../services/player_provider.dart';
+import 'queue_page.dart';
 
 class NowPlayingPage extends StatefulWidget {
   const NowPlayingPage({super.key});
@@ -143,8 +144,13 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.more_vert, color: Colors.white70),
-                      onPressed: () {},
+                      icon: const Icon(Icons.queue_music, color: Colors.white70),
+                      tooltip: 'Queue',
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const QueuePage()),
+                      ),
                     ),
                   ],
                 ),

@@ -80,3 +80,21 @@ Write the full code for:
 - The download pipe with progress
 - The metadata embedding
 - The library refresh trigger
+
+
+# PHASE 5
+
+Add playlist creation and queue management.
+
+I want to create playlists that are saved as .m3u files in a Playlists subfolder inside my music folder. In the Library tab, add a "Playlists" section at the top.
+
+Long-press on any track to show a context menu with options:
+- Add to Queue
+- Add to Playlist (shows a list of existing playlists + create new)
+- Delete File (moves to trash, don't permanently delete)
+
+Build a Queue view accessible from the Now Playing page (a list icon in the top right). It shows the current queue, with drag-to-reorder functionality.
+
+When the current song finishes, automatically play the next one in the queue. If the queue is empty, stop.
+
+Provide the full code for playlist CRUD, the .m3u read/write service, the context menu, and the drag-and-drop queue UI.

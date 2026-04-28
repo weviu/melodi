@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -9,6 +10,7 @@ import '../data/song_model.dart';
 import '../services/download_provider.dart';
 import '../services/music_folder_provider.dart';
 import '../services/player_provider.dart';
+import '../services/playlist_provider.dart';
 import '../services/scanner_service.dart';
 
 class LibraryPage extends StatefulWidget {
@@ -29,9 +31,9 @@ class _LibraryPageState extends State<LibraryPage> {
   void initState() {
     super.initState();
     _loadFromDb();
-    // Reload whenever a download completes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DownloadProvider>().addListener(_loadFromDb);
+      _loadPlaylists();
     });
   }
 
@@ -39,6 +41,13 @@ class _LibraryPageState extends State<LibraryPage> {
   void dispose() {
     context.read<DownloadProvider>().removeListener(_loadFromDb);
     super.dispose();
+  }
+
+  void _loadPlaylists() {
+    final folder = context.read<MusicFolderProvider>().folder;
+    if (folder != null) {
+      context.read<PlaylistProvider>().load(folder);
+    }
   }
 
   Future<void> _loadFromDb() async {
@@ -73,6 +82,7 @@ class _LibraryPageState extends State<LibraryPage> {
     // Persist folder so Search page can use it
     if (mounted) {
       await context.read<MusicFolderProvider>().setFolder(dir);
+      await context.read<PlaylistProvider>().load(dir);
     }
 
     setState(() => _isScanning = true);
@@ -99,6 +109,8 @@ class _LibraryPageState extends State<LibraryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final playlists = context.watch<PlaylistProvider>().playlists;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Library'),
@@ -127,18 +139,15 @@ class _LibraryPageState extends State<LibraryPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.library_music,
+                  const Icon(Icons.library_music,
                       size: 72, color: Colors.white24),
                   const SizedBox(height: 16),
-                  const Text(
-                    'No music yet',
-                    style: TextStyle(fontSize: 18, color: Colors.white54),
-                  ),
+                  const Text('No music yet',
+                      style:
+                          TextStyle(fontSize: 18, color: Colors.white54)),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Tap the folder icon to scan a directory',
-                    style: TextStyle(color: Colors.white38),
-                  ),
+                  const Text('Tap the folder icon to scan a directory',
+                      style: TextStyle(color: Colors.white38)),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
                     onPressed: _isScanning ? null : _pickAndScan,
@@ -154,54 +163,438 @@ class _LibraryPageState extends State<LibraryPage> {
                 ],
               ),
             )
-          : ListView.builder(
-              itemCount: _songs.length,
-              itemBuilder: (context, index) {
-                final song = _songs[index];
-                return _SongTile(
-                  song: song,
-                  onTap: () {
-                    context.read<PlayerProvider>().playSong(
-                          song,
-                          queue: _songs,
-                          index: index,
-                        );
-                  },
-                );
-              },
+          : CustomScrollView(
+              slivers: [
+                // ── Playlists section ──────────────────────────────────
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Row(
+                      children: [
+                        const Text('Playlists',
+                            style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.1)),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.add,
+                              color: Colors.white54, size: 20),
+                          tooltip: 'New playlist',
+                          onPressed: () =>
+                              _showCreatePlaylistDialog(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (playlists.isEmpty)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: Text('No playlists yet',
+                          style: TextStyle(
+                              color: Colors.white24, fontSize: 13)),
+                    ),
+                  )
+                else
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 88,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 12),
+                        itemCount: playlists.length,
+                        itemBuilder: (context, i) =>
+                            _PlaylistChip(name: playlists[i]),
+                      ),
+                    ),
+                  ),
+
+                // ── Divider ────────────────────────────────────────────
+                const SliverToBoxAdapter(
+                  child: Divider(color: Colors.white12, height: 1),
+                ),
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(16, 12, 16, 6),
+                    child: Text('Songs',
+                        style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.1)),
+                  ),
+                ),
+
+                // ── Songs list ─────────────────────────────────────────
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final song = _songs[index];
+                      return _SongTile(
+                        song: song,
+                        allSongs: _songs,
+                        onTap: () {
+                          context.read<PlayerProvider>().playSong(
+                                song,
+                                queue: _songs,
+                                index: index,
+                              );
+                        },
+                      );
+                    },
+                    childCount: _songs.length,
+                  ),
+                ),
+              ],
             ),
+    );
+  }
+
+  void _showCreatePlaylistDialog(BuildContext context) {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF282828),
+        title: const Text('New Playlist',
+            style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Playlist name',
+            hintStyle: TextStyle(color: Colors.white38),
+            enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.white24)),
+            focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Color(0xFF0b007f))),
+          ),
+          onSubmitted: (v) {
+            if (v.trim().isNotEmpty) {
+              context.read<PlaylistProvider>().create(v.trim());
+            }
+            Navigator.pop(context);
+          },
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel',
+                  style: TextStyle(color: Colors.white54))),
+          TextButton(
+            onPressed: () {
+              if (ctrl.text.trim().isNotEmpty) {
+                context
+                    .read<PlaylistProvider>()
+                    .create(ctrl.text.trim());
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Create',
+                style: TextStyle(color: Color(0xFF6060ff))),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlaylistChip extends StatelessWidget {
+  final String name;
+  const _PlaylistChip({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onLongPress: () => _showDeleteDialog(context),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF282828),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.queue_music,
+                color: Colors.white54, size: 26),
+            const SizedBox(height: 4),
+            Text(name,
+                style: const TextStyle(
+                    color: Colors.white70, fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF282828),
+        title: Text('Delete "$name"?',
+            style: const TextStyle(color: Colors.white)),
+        content: const Text('This will delete the playlist file.',
+            style: TextStyle(color: Colors.white54)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel',
+                  style: TextStyle(color: Colors.white54))),
+          TextButton(
+            onPressed: () {
+              context.read<PlaylistProvider>().delete(name);
+              Navigator.pop(context);
+            },
+            child: const Text('Delete',
+                style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _SongTile extends StatelessWidget {
   final Song song;
+  final List<Song> allSongs;
   final VoidCallback onTap;
-  const _SongTile({required this.song, required this.onTap});
+  const _SongTile(
+      {required this.song, required this.allSongs, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: _AlbumArt(albumArt: song.albumArt),
-      title: Text(
-        song.title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-          fontSize: 15,
+    return GestureDetector(
+      onLongPress: () => _showContextMenu(context),
+      child: ListTile(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: _AlbumArt(albumArt: song.albumArt),
+        title: Text(
+          song.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
+        ),
+        subtitle: Text(
+          '${song.artist} • ${song.album}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: Colors.white54, fontSize: 13),
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  void _showContextMenu(BuildContext context) {
+    final playlists = context.read<PlaylistProvider>().playlists;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF282828),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: Row(
+                children: [
+                  _AlbumArt(albumArt: song.albumArt),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(song.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
+                        Text(song.artist,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white54, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(color: Colors.white12, height: 1),
+
+            // Add to Queue
+            ListTile(
+              leading: const Icon(Icons.add_to_queue,
+                  color: Colors.white70),
+              title: const Text('Add to Queue',
+                  style: TextStyle(color: Colors.white)),
+              onTap: () {
+                context.read<PlayerProvider>().addToQueue(song);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        '"${song.title}" added to queue'),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+
+            // Add to Playlist
+            ListTile(
+              leading: const Icon(Icons.playlist_add,
+                  color: Colors.white70),
+              title: const Text('Add to Playlist',
+                  style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _showAddToPlaylistSheet(context, playlists);
+              },
+            ),
+
+            // Delete File
+            ListTile(
+              leading:
+                  const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Delete File',
+                  style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmDelete(context);
+              },
+            ),
+          ],
         ),
       ),
-      subtitle: Text(
-        '${song.artist} • ${song.album}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: Colors.white54, fontSize: 13),
+    );
+  }
+
+  void _showAddToPlaylistSheet(
+      BuildContext context, List<String> playlists) {
+    if (playlists.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No playlists yet. Create one first.')),
+      );
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF282828),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      onTap: onTap,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Add to playlist',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16)),
+            ),
+            const Divider(color: Colors.white12, height: 1),
+            ...playlists.map(
+              (name) => ListTile(
+                leading: const Icon(Icons.queue_music,
+                    color: Colors.white54),
+                title: Text(name,
+                    style: const TextStyle(color: Colors.white)),
+                onTap: () {
+                  context
+                      .read<PlaylistProvider>()
+                      .addSong(name, song, allSongs);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text(
+                            'Added to "$name"'),
+                        duration: const Duration(seconds: 2)),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF282828),
+        title: const Text('Delete file?',
+            style: TextStyle(color: Colors.white)),
+        content: Text(
+            '"${song.title}" will be moved to trash.',
+            style: const TextStyle(color: Colors.white54)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel',
+                  style: TextStyle(color: Colors.white54))),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                // Move to trash by renaming to .trash folder, or just delete
+                final f = File(song.filePath);
+                if (await f.exists()) await f.delete();
+                // Re-scan to refresh library
+                final db = DatabaseHelper();
+                await db.clearSongs();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('File deleted')),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Delete failed: $e')),
+                );
+              }
+            },
+            child: const Text('Delete',
+                style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 }

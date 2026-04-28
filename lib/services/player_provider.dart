@@ -14,7 +14,7 @@ class PlayerProvider extends ChangeNotifier {
   Duration _duration = Duration.zero;
 
   Song? get currentSong => _currentSong;
-  List<Song> get queue => _queue;
+  List<Song> get queue => List.unmodifiable(_queue);
   int get currentIndex => _currentIndex;
   bool get isPlaying => _isPlaying;
   Duration get position => _position;
@@ -42,10 +42,46 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> playSong(Song song, {List<Song>? queue, int? index}) async {
     _currentSong = song;
-    if (queue != null) _queue = List.unmodifiable(queue);
+    if (queue != null) _queue = List<Song>.from(queue);
     if (index != null) _currentIndex = index;
+    _position = Duration.zero;
+    _duration = Duration.zero;
     notifyListeners();
     await _player.play(DeviceFileSource(song.filePath));
+  }
+
+  /// Add a song to the end of the current queue.
+  void addToQueue(Song song) {
+    _queue.add(song);
+    notifyListeners();
+  }
+
+  /// Remove a song by queue index.
+  void removeFromQueue(int index) {
+    if (index < 0 || index >= _queue.length) return;
+    _queue.removeAt(index);
+    if (_currentIndex > index) {
+      _currentIndex--;
+    } else if (_currentIndex == index) {
+      _currentIndex = _currentIndex.clamp(0, _queue.length - 1);
+    }
+    notifyListeners();
+  }
+
+  /// Reorder queue (from ReorderableListView).
+  void reorderQueue(int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) newIndex -= 1;
+    final song = _queue.removeAt(oldIndex);
+    _queue.insert(newIndex, song);
+    // Keep _currentIndex pointing to the same song
+    if (_currentIndex == oldIndex) {
+      _currentIndex = newIndex;
+    } else if (oldIndex < _currentIndex && newIndex >= _currentIndex) {
+      _currentIndex--;
+    } else if (oldIndex > _currentIndex && newIndex <= _currentIndex) {
+      _currentIndex++;
+    }
+    notifyListeners();
   }
 
   Future<void> togglePlayPause() async {
@@ -62,7 +98,14 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> next() async {
     if (_queue.isEmpty || _currentIndex < 0) return;
-    final nextIndex = (_currentIndex + 1) % _queue.length;
+    final nextIndex = _currentIndex + 1;
+    if (nextIndex >= _queue.length) {
+      // End of queue — stop
+      await _player.stop();
+      _isPlaying = false;
+      notifyListeners();
+      return;
+    }
     await playSong(_queue[nextIndex], index: nextIndex);
   }
 
@@ -71,7 +114,7 @@ class PlayerProvider extends ChangeNotifier {
     if (_position.inSeconds > 3) {
       await _player.seek(Duration.zero);
     } else {
-      final prevIndex = (_currentIndex - 1 + _queue.length) % _queue.length;
+      final prevIndex = (_currentIndex - 1).clamp(0, _queue.length - 1);
       await playSong(_queue[prevIndex], index: prevIndex);
     }
   }
