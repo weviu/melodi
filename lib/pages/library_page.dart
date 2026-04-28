@@ -2,9 +2,11 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../data/database_helper.dart';
 import '../data/song_model.dart';
+import '../services/player_provider.dart';
 import '../services/scanner_service.dart';
 
 class LibraryPage extends StatefulWidget {
@@ -139,7 +141,16 @@ class _LibraryPageState extends State<LibraryPage> {
               itemCount: _songs.length,
               itemBuilder: (context, index) {
                 final song = _songs[index];
-                return _SongTile(song: song);
+                return _SongTile(
+                  song: song,
+                  onTap: () {
+                    context.read<PlayerProvider>().playSong(
+                          song,
+                          queue: _songs,
+                          index: index,
+                        );
+                  },
+                );
               },
             ),
     );
@@ -148,7 +159,8 @@ class _LibraryPageState extends State<LibraryPage> {
 
 class _SongTile extends StatelessWidget {
   final Song song;
-  const _SongTile({required this.song});
+  final VoidCallback onTap;
+  const _SongTile({required this.song, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -172,6 +184,7 @@ class _SongTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(color: Colors.white54, fontSize: 13),
       ),
+      onTap: onTap,
     );
   }
 }
