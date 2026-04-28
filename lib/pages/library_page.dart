@@ -33,10 +33,28 @@ class _LibraryPageState extends State<LibraryPage> {
   }
 
   Future<void> _pickAndScan() async {
-    final dir = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Choose Music Folder',
-    );
-    if (dir == null) return;
+    String? dir;
+    try {
+      dir = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: 'Choose Music Folder',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Folder picker error: $e')),
+        );
+      }
+      return;
+    }
+
+    if (dir == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No folder selected')),
+        );
+      }
+      return;
+    }
 
     setState(() => _isScanning = true);
     try {
