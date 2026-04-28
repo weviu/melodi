@@ -659,7 +659,6 @@ class _MelodiLogo extends StatelessWidget {
           'lily.svg',
           width: 28,
           height: 28,
-          colorFilter: const ColorFilter.mode(color, BlendMode.srcIn),
         ),
         const SizedBox(width: 6),
         const Text(
