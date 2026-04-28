@@ -657,8 +657,8 @@ class _MelodiLogo extends StatelessWidget {
       children: [
         SvgPicture.asset(
           'lily.svg',
-          width: 42,
-          height: 42,
+          width: 56,
+          height: 56,
         ),
         const SizedBox(width: 8),
         const Text(
