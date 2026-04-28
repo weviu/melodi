@@ -262,22 +262,11 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
               // Playback controls
               Row(
                 children: [
-                  // Left: Queue + Shuffle (takes equal space to right side)
+                  // Left: Shuffle
                   Expanded(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        IconButton(
-                          iconSize: 26,
-                          icon: const Icon(Icons.queue_music,
-                              color: Colors.white54),
-                          tooltip: 'Queue',
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const QueuePage()),
-                          ),
-                        ),
                         IconButton(
                           iconSize: 26,
                           icon: Icon(
@@ -332,7 +321,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                     ],
                   ),
 
-                  // Right: Loop (mirrors left side width)
+                  // Right: Loop
                   Expanded(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -355,6 +344,24 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                           },
                         ),
                       ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // Second row: Queue button under loop (right-aligned)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    iconSize: 26,
+                    icon: const Icon(Icons.queue_music,
+                        color: Colors.white54),
+                    tooltip: 'Queue',
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const QueuePage()),
                     ),
                   ),
                 ],
