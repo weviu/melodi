@@ -322,11 +322,11 @@ class _PlaylistHeader extends StatelessWidget {
                       width: 52,
                       height: 52,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF1DB954),
+                        color: Color(0xFF6060ff),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.play_arrow,
-                          color: Colors.black, size: 28),
+                          color: Colors.white, size: 28),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -367,10 +367,10 @@ class _SmallPlayButton extends StatelessWidget {
         width: 36,
         height: 36,
         decoration: const BoxDecoration(
-          color: Color(0xFF1DB954),
+          color: Color(0xFF6060ff),
           shape: BoxShape.circle,
         ),
-        child: const Icon(Icons.play_arrow, color: Colors.black, size: 20),
+        child: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
       ),
     );
   }
@@ -415,13 +415,13 @@ class _SongRow extends StatelessWidget {
                 width: 28,
                 child: isPlaying
                     ? const Icon(Icons.volume_up,
-                        color: Color(0xFF1DB954), size: 16)
+                        color: Color(0xFF6060ff), size: 16)
                     : Text(
                         '$trackNumber',
                         textAlign: TextAlign.right,
                         style: TextStyle(
                           color: isCurrent
-                              ? const Color(0xFF1DB954)
+                              ? const Color(0xFF6060ff)
                               : Colors.white54,
                           fontSize: 14,
                         ),
@@ -460,7 +460,7 @@ class _SongRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: isCurrent
-                            ? const Color(0xFF1DB954)
+                            ? const Color(0xFF6060ff)
                             : Colors.white,
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
