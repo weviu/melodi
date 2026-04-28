@@ -12,6 +12,7 @@ import '../services/music_folder_provider.dart';
 import '../services/player_provider.dart';
 import '../services/playlist_provider.dart';
 import '../services/scanner_service.dart';
+import 'playlist_detail_page.dart';
 
 class LibraryPage extends StatefulWidget {
   const LibraryPage({super.key});
@@ -208,8 +209,10 @@ class _LibraryPageState extends State<LibraryPage> {
                         padding:
                             const EdgeInsets.symmetric(horizontal: 12),
                         itemCount: playlists.length,
-                        itemBuilder: (context, i) =>
-                            _PlaylistChip(name: playlists[i]),
+                        itemBuilder: (context, i) => _PlaylistChip(
+                          name: playlists[i],
+                          allSongs: _songs,
+                        ),
                       ),
                     ),
                   ),
@@ -308,11 +311,21 @@ class _LibraryPageState extends State<LibraryPage> {
 
 class _PlaylistChip extends StatelessWidget {
   final String name;
-  const _PlaylistChip({required this.name});
+  final List<Song> allSongs;
+  const _PlaylistChip({required this.name, required this.allSongs});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PlaylistDetailPage(
+            playlistName: name,
+            allSongs: allSongs,
+          ),
+        ),
+      ),
       onLongPress: () => _showDeleteDialog(context),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
