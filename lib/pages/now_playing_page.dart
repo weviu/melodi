@@ -265,6 +265,15 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                 children: [
                   IconButton(
                     iconSize: 28,
+                    icon: const Icon(Icons.queue_music, color: Colors.white54),
+                    tooltip: 'Queue',
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const QueuePage()),
+                    ),
+                  ),
+                  IconButton(
+                    iconSize: 28,
                     icon: Icon(
                       Icons.shuffle,
                       color: player.isShuffled
@@ -298,8 +307,23 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                     icon: const Icon(Icons.skip_next, color: Colors.white),
                     onPressed: () => player.next(),
                   ),
-                  // Placeholder to balance layout
-                  const SizedBox(width: 44),
+                  IconButton(
+                    iconSize: 28,
+                    icon: Icon(
+                      player.loopMode == LoopMode.loopSong
+                          ? Icons.repeat_one
+                          : Icons.repeat,
+                      color: player.loopMode == LoopMode.off
+                          ? Colors.white54
+                          : const Color(0xFF6060ff),
+                    ),
+                    onPressed: () => player.cycleLoopMode(),
+                    tooltip: switch (player.loopMode) {
+                      LoopMode.off => 'Loop off',
+                      LoopMode.loopPlaylist => 'Loop playlist',
+                      LoopMode.loopSong => 'Loop song',
+                    },
+                  ),
                 ],
               ),
 

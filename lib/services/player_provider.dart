@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../data/song_model.dart';
 
+enum LoopMode { off, loopPlaylist, loopSong }
+
 class PlayerProvider extends ChangeNotifier {
   final AudioPlayer _player = AudioPlayer();
 
@@ -21,6 +23,7 @@ class PlayerProvider extends ChangeNotifier {
 
   bool _isPlaying = false;
   bool _isShuffled = false;
+  LoopMode _loopMode = LoopMode.off;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
 
@@ -29,6 +32,7 @@ class PlayerProvider extends ChangeNotifier {
   Song? get currentSong => _currentSong;
   bool get isPlaying => _isPlaying;
   bool get isShuffled => _isShuffled;
+  LoopMode get loopMode => _loopMode;
   Duration get position => _position;
   Duration get duration => _duration;
   String get sourceName => _sourceName;
@@ -102,6 +106,12 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> next() async {
+    // Loop song — restart current
+    if (_loopMode == LoopMode.loopSong && _currentSong != null) {
+      await _player.seek(Duration.zero);
+      await _player.resume();
+      return;
+    }
     // 1. Manual queue has priority
     if (_manualQueue.isNotEmpty) {
       final song = _manualQueue.removeAt(0);
@@ -114,7 +124,13 @@ class PlayerProvider extends ChangeNotifier {
       await _playCurrent(_source[_sourceIndex]);
       return;
     }
-    // 3. End of queue — stop
+    // 3. End of source
+    if (_loopMode == LoopMode.loopPlaylist && _source.isNotEmpty) {
+      _sourceIndex = 0;
+      await _playCurrent(_source[0]);
+      return;
+    }
+    // 4. Stop
     await _player.stop();
     _isPlaying = false;
     notifyListeners();
@@ -196,6 +212,11 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   // ── Shuffle ────────────────────────────────────────────────────────────────
+
+  void cycleLoopMode() {
+    _loopMode = LoopMode.values[(_loopMode.index + 1) % LoopMode.values.length];
+    notifyListeners();
+  }
 
   void toggleShuffle() {
     if (_isShuffled) {
