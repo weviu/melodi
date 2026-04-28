@@ -1,14 +1,11 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:palette_generator/palette_generator.dart';
 import 'package:provider/provider.dart';
 
 import '../data/song_model.dart';
 import '../services/player_provider.dart';
 import '../services/playlist_provider.dart';
-import '../widgets/mini_player.dart';
-import 'now_playing_page.dart';
 import '../widgets/mini_player.dart';
 import 'now_playing_page.dart';
 
@@ -29,7 +26,7 @@ class PlaylistDetailPage extends StatefulWidget {
 class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
   List<Song> _songs = [];
   bool _loading = true;
-  Color _dominantColor = const Color(0xFF1a1a2e);
+  static const _themeColor = Color(0xFF0b007f);
 
   @override
   void initState() {
@@ -46,21 +43,6 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
       _songs = songs;
       _loading = false;
     });
-    _extractColor(songs.isNotEmpty ? songs.first.albumArt : null);
-  }
-
-  Future<void> _extractColor(Uint8List? artBytes) async {
-    if (artBytes == null) return;
-    try {
-      final pg = await PaletteGenerator.fromImageProvider(
-        MemoryImage(artBytes),
-        maximumColorCount: 8,
-      );
-      final color = pg.dominantColor?.color ??
-          pg.vibrantColor?.color ??
-          const Color(0xFF1a1a2e);
-      if (mounted) setState(() => _dominantColor = color);
-    } catch (_) {}
   }
 
   Future<void> _remove(int index) async {
@@ -173,7 +155,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
       expandedHeight: 400,
       pinned: true,
       stretch: true,
-      backgroundColor: _dominantColor.withAlpha(230),
+      backgroundColor: _themeColor.withAlpha(230),
       leading: IconButton(
         icon: const Icon(Icons.arrow_back, color: Colors.white),
         onPressed: () => Navigator.pop(context),
@@ -201,7 +183,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
           name: widget.playlistName,
           songCount: _songs.length,
           coverArt: coverArt,
-          dominantColor: _dominantColor,
+          dominantColor: _themeColor,
           onPlay: () => _playAll(context),
           onShuffle: () => _shufflePlay(context),
         ),
