@@ -13,6 +13,7 @@ import '../services/player_provider.dart';
 import '../services/playlist_provider.dart';
 import '../services/scanner_service.dart';
 import 'playlist_detail_page.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class LibraryPage extends StatefulWidget {
   const LibraryPage({super.key});
@@ -115,6 +116,14 @@ class _LibraryPageState extends State<LibraryPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Library'),
+        centerTitle: false,
+        flexibleSpace: const Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 10),
+            child: _MelodiLogo(),
+          ),
+        ),
         actions: [
           if (_isScanning)
             const Padding(
@@ -632,6 +641,38 @@ class _AlbumArt extends StatelessWidget {
                     color: Colors.white38, size: 28),
               ),
       ),
+    );
+  }
+}
+
+class _MelodiLogo extends StatelessWidget {
+  const _MelodiLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    const color = Color(0xFF6060ff);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SvgPicture.asset(
+          'lily.svg',
+          width: 28,
+          height: 28,
+          colorFilter: const ColorFilter.mode(color, BlendMode.srcIn),
+        ),
+        const SizedBox(width: 6),
+        const Text(
+          'MELODI',
+          style: TextStyle(
+            color: color,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 4,
+            fontFamily: 'Analogue BC',
+          ),
+        ),
+      ],
     );
   }
 }

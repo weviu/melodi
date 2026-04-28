@@ -42,6 +42,7 @@ dependencies:
   shared_preferences: ^2.3.3
   provider: ^6.1.2
   palette_generator: ^0.3.3+3
+  flutter_svg: ^2.0.10
 
 dependency_overrides:
   flutter_rust_bridge: 2.11.1
@@ -67,6 +68,14 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - lily.svg
+
+  fonts:
+  - family: Analogue BC
+    fonts:
+      - asset: assets/fonts/AnalogueBC.otf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

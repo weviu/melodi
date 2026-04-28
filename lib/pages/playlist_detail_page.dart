@@ -7,6 +7,10 @@ import 'package:provider/provider.dart';
 import '../data/song_model.dart';
 import '../services/player_provider.dart';
 import '../services/playlist_provider.dart';
+import '../widgets/mini_player.dart';
+import 'now_playing_page.dart';
+import '../widgets/mini_player.dart';
+import 'now_playing_page.dart';
 
 class PlaylistDetailPage extends StatefulWidget {
   final String playlistName;
@@ -102,6 +106,18 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
+      bottomNavigationBar: MiniPlayer(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const NowPlayingPage()),
+        ),
+      ),
+      bottomNavigationBar: MiniPlayer(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const NowPlayingPage()),
+        ),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : CustomScrollView(
