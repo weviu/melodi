@@ -13,11 +13,12 @@ class _Item {
   final Song? song;
   final int combinedIndex;
   final String? label;
+  final int keyIndex;
 
-  _Item._({required this.type, this.song, this.combinedIndex = -1, this.label});
+  _Item._({required this.type, this.song, this.combinedIndex = -1, this.label, this.keyIndex = 0});
 
-  factory _Item.song(Song s, int ci) =>
-      _Item._(type: _ItemType.song, song: s, combinedIndex: ci);
+  factory _Item.song(Song s, int ci, {int keyIndex = 0}) =>
+      _Item._(type: _ItemType.song, song: s, combinedIndex: ci, keyIndex: keyIndex);
   factory _Item.divider() => _Item._(type: _ItemType.divider);
   factory _Item.repeatInfo(String l) =>
       _Item._(type: _ItemType.repeatInfo, label: l);
@@ -71,7 +72,7 @@ class _QueuePageState extends State<QueuePage> {
     final result = <_Item>[];
 
     for (int i = 0; i < sourceNext.length && result.length < _visibleSourceCount; i++) {
-      result.add(_Item.song(sourceNext[i], manual.length + i));
+      result.add(_Item.song(sourceNext[i], manual.length + i, keyIndex: result.length));
     }
 
     if (mode == LoopMode.loopPlaylist && source.isNotEmpty) {
@@ -80,7 +81,7 @@ class _QueuePageState extends State<QueuePage> {
       }
       int i = 0;
       while (result.length < _visibleSourceCount) {
-        result.add(_Item.song(source[i % source.length], -1));
+        result.add(_Item.song(source[i % source.length], -1, keyIndex: result.length));
         i++;
       }
     }
@@ -216,7 +217,7 @@ class _QueuePageState extends State<QueuePage> {
         final ci = item.combinedIndex;
         final canManipulate = ci >= 0;
         return _QueueTile(
-          key: ValueKey('src_${item.song!.filePath}_$ci'),
+          key: ValueKey('src_${item.keyIndex}'),  
           song: item.song!,
           showRemove: canManipulate,
           onRemove: canManipulate ? () => player.removeFromUpcoming(ci) : null,
