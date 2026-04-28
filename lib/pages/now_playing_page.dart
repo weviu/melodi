@@ -113,8 +113,16 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Reserve space for top bar (~52), title+artist (~60),
+              // slider (~72), controls (~72), padding (~32)
+              final reserved = 52.0 + 60.0 + 72.0 + 72.0 + 32.0;
+              final artSize =
+                  (constraints.maxHeight - reserved).clamp(80.0, constraints.maxWidth - 80.0);
+
+              return Column(
+                children: [
               // Top bar
               Padding(
                 padding:
@@ -144,11 +152,12 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
 
               const Spacer(),
 
-              // Album art
+              // Album art — sized to available height
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: AspectRatio(
-                  aspectRatio: 1,
+                child: SizedBox(
+                  width: artSize,
+                  height: artSize,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: song.albumArt != null
@@ -162,7 +171,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                 ),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
 
               // Title & artist
               Padding(
@@ -276,7 +285,9 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
               ),
 
               const Spacer(),
-            ],
+                ],
+              );
+            },
           ),
         ),
       ),
