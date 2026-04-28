@@ -67,14 +67,13 @@ class DownloadProvider extends ChangeNotifier {
         );
       });
 
-      _setState(videoId,
-          const DownloadState(status: DownloadStatus.done, progress: 1.0));
-
-      // Re-scan and update DB
+      // Re-scan and update DB first, then mark done so listeners see fresh data
       final songs = await _scanner.scanDirectory(outputDir);
       await _db.clearSongs();
       await _db.insertSongs(songs);
       onLibraryChanged?.call();
+      _setState(videoId,
+          const DownloadState(status: DownloadStatus.done, progress: 1.0));
     } catch (e) {
       _setState(
         videoId,

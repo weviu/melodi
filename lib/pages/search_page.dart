@@ -16,6 +16,7 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final _controller = TextEditingController();
+  final _focusNode = FocusNode();
   final _ytDlp = YtDlpService();
 
   List<YtSearchResult> _results = [];
@@ -30,6 +31,7 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -54,7 +56,11 @@ class _SearchPageState extends State<SearchPage> {
     });
     try {
       final results = await _ytDlp.search(query);
-      if (mounted) setState(() => _results = results);
+      if (mounted) {
+        setState(() => _results = results);
+        // Re-claim focus so backspace keeps working after results render
+        _focusNode.requestFocus();
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     } finally {
@@ -132,8 +138,9 @@ class _SearchPageState extends State<SearchPage> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: TextField(
               controller: _controller,
+              focusNode: _focusNode,
               onChanged: _onQueryChanged,
-              autofocus: false,
+              autofocus: true,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Search YouTube...',
