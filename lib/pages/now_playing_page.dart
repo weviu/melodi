@@ -260,105 +260,104 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
               const SizedBox(height: 16),
 
               // Playback controls
-              SizedBox(
-                height: 72,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // ── Centered: Prev / Play-Pause / Next ──────────────
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
+              Row(
+                children: [
+                  // Left: Queue + Shuffle (takes equal space to right side)
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         IconButton(
-                          iconSize: 36,
-                          icon: const Icon(Icons.skip_previous,
-                              color: Colors.white),
-                          onPressed: () => player.previous(),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            iconSize: 40,
-                            icon: Icon(
-                              player.isPlaying
-                                  ? Icons.pause
-                                  : Icons.play_arrow,
-                              color: Colors.black,
-                            ),
-                            onPressed: () => player.togglePlayPause(),
+                          iconSize: 26,
+                          icon: const Icon(Icons.queue_music,
+                              color: Colors.white54),
+                          tooltip: 'Queue',
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const QueuePage()),
                           ),
                         ),
-                        const SizedBox(width: 8),
                         IconButton(
-                          iconSize: 36,
-                          icon: const Icon(Icons.skip_next,
-                              color: Colors.white),
-                          onPressed: () => player.next(),
+                          iconSize: 26,
+                          icon: Icon(
+                            Icons.shuffle,
+                            color: player.isShuffled
+                                ? const Color(0xFF6060ff)
+                                : Colors.white54,
+                          ),
+                          onPressed: () => player.toggleShuffle(),
+                          tooltip: player.isShuffled
+                              ? 'Shuffle on'
+                              : 'Shuffle off',
                         ),
                       ],
                     ),
+                  ),
 
-                    // ── Left: Queue + Shuffle ────────────────────────────
-                    Positioned(
-                      left: 8,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            iconSize: 26,
-                            icon: const Icon(Icons.queue_music,
-                                color: Colors.white54),
-                            tooltip: 'Queue',
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const QueuePage()),
-                            ),
-                          ),
-                          IconButton(
-                            iconSize: 26,
-                            icon: Icon(
-                              Icons.shuffle,
-                              color: player.isShuffled
-                                  ? const Color(0xFF6060ff)
-                                  : Colors.white54,
-                            ),
-                            onPressed: () => player.toggleShuffle(),
-                            tooltip: player.isShuffled
-                                ? 'Shuffle on'
-                                : 'Shuffle off',
-                          ),
-                        ],
+                  // Center: Prev / Play-Pause / Next
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        iconSize: 36,
+                        icon: const Icon(Icons.skip_previous,
+                            color: Colors.white),
+                        onPressed: () => player.previous(),
                       ),
-                    ),
-
-                    // ── Right: Loop ──────────────────────────────────────
-                    Positioned(
-                      right: 8,
-                      child: IconButton(
-                        iconSize: 26,
-                        icon: Icon(
-                          player.loopMode == LoopMode.loopSong
-                              ? Icons.repeat_one
-                              : Icons.repeat,
-                          color: player.loopMode == LoopMode.off
-                              ? Colors.white54
-                              : const Color(0xFF6060ff),
+                      const SizedBox(width: 4),
+                      Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
                         ),
-                        onPressed: () => player.cycleLoopMode(),
-                        tooltip: switch (player.loopMode) {
-                          LoopMode.off => 'Loop off',
-                          LoopMode.loopPlaylist => 'Loop playlist',
-                          LoopMode.loopSong => 'Loop song',
-                        },
+                        child: IconButton(
+                          iconSize: 40,
+                          icon: Icon(
+                            player.isPlaying
+                                ? Icons.pause
+                                : Icons.play_arrow,
+                            color: Colors.black,
+                          ),
+                          onPressed: () => player.togglePlayPause(),
+                        ),
                       ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        iconSize: 36,
+                        icon: const Icon(Icons.skip_next,
+                            color: Colors.white),
+                        onPressed: () => player.next(),
+                      ),
+                    ],
+                  ),
+
+                  // Right: Loop (mirrors left side width)
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          iconSize: 26,
+                          icon: Icon(
+                            player.loopMode == LoopMode.loopSong
+                                ? Icons.repeat_one
+                                : Icons.repeat,
+                            color: player.loopMode == LoopMode.off
+                                ? Colors.white54
+                                : const Color(0xFF6060ff),
+                          ),
+                          onPressed: () => player.cycleLoopMode(),
+                          tooltip: switch (player.loopMode) {
+                            LoopMode.off => 'Loop off',
+                            LoopMode.loopPlaylist => 'Loop playlist',
+                            LoopMode.loopSong => 'Loop song',
+                          },
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
 
               const Spacer(),
