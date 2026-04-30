@@ -427,10 +427,13 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
       child: Scaffold(
       backgroundColor: const Color(0xFF121319),
       bottomNavigationBar: MiniPlayer(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const NowPlayingPage()),
-        ),
+        onTap: () {
+          FocusScope.of(context).unfocus();
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NowPlayingPage()),
+          );
+        },
       ),
       body: _loading
           ? const Center(

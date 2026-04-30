@@ -145,7 +145,6 @@ class _SearchPageState extends State<SearchPage> {
               controller: _controller,
               focusNode: _focusNode,
               onChanged: _onQueryChanged,
-              autofocus: true,
               textInputAction: TextInputAction.search,
               onSubmitted: (_) => _focusNode.unfocus(),
               style: const TextStyle(color: Colors.white),

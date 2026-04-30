@@ -158,6 +158,15 @@ async def search(
         data = json.loads(result.stdout)
         entries = data.get("entries") or []
 
+        def _best_thumb(e: dict) -> str:
+            # flat-playlist entries have a `thumbnails` list, not a single `thumbnail`
+            thumbs = e.get("thumbnails") or []
+            if thumbs:
+                # pick highest-resolution available
+                best = max(thumbs, key=lambda t: (t.get("height") or 0) * (t.get("width") or 0))
+                return best.get("url", "")
+            return e.get("thumbnail") or ""
+
         output = []
         for e in entries:
             secs = int(e.get("duration") or 0)
@@ -167,7 +176,7 @@ async def search(
                     "title": e.get("title", "Unknown"),
                     "channel": e.get("channel") or e.get("uploader", ""),
                     "duration": f"{secs // 60:02d}:{secs % 60:02d}",
-                    "thumbnailUrl": e.get("thumbnail", ""),
+                    "thumbnailUrl": _best_thumb(e),
                 }
             )
 
