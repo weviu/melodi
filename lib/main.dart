@@ -3,9 +3,11 @@ import 'package:metadata_god/metadata_god.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'pages/home_page.dart';
 import 'pages/library_page.dart';
 import 'pages/now_playing_page.dart';
 import 'pages/search_page.dart';
+import 'theme.dart';
 import 'services/download_provider.dart';
 import 'services/music_folder_provider.dart';
 import 'services/player_provider.dart';
@@ -49,15 +51,21 @@ class MelodiApp extends StatelessWidget {
           surfaceContainerHighest: const Color(0xFF282828),
         ),
         scaffoldBackgroundColor: const Color(0xFF121212),
-        navigationBarTheme: const NavigationBarThemeData(
-          backgroundColor: Color(0xFF181818),
-          indicatorColor: Color(0xFF0b007f),
-          labelTextStyle: WidgetStatePropertyAll(
-            TextStyle(color: Colors.white, fontSize: 12),
-          ),
-          iconTheme: WidgetStatePropertyAll(
-            IconThemeData(color: Colors.white70),
-          ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: kBgSurface,
+          indicatorColor: kLilyDark.withAlpha(40),
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const IconThemeData(color: kLilyDark);
+            }
+            return const IconThemeData(color: kTextSecondary);
+          }),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const TextStyle(color: kLilyDark, fontSize: 12);
+            }
+            return const TextStyle(color: kTextSecondary, fontSize: 12);
+          }),
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF181818),
@@ -78,12 +86,12 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _selectedIndex = 0;
+  int _selectedIndex = 2;
 
   static const List<Widget> _pages = [
-    LibraryPage(),
+    HomePage(),
     SearchPage(),
-    NowPlayingPage(),
+    LibraryPage(),
   ];
 
   @override
@@ -97,7 +105,10 @@ class _MainShellState extends State<MainShell> {
         mainAxisSize: MainAxisSize.min,
         children: [
           MiniPlayer(
-            onTap: () => setState(() => _selectedIndex = 2),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NowPlayingPage()),
+            ),
           ),
           NavigationBar(
             selectedIndex: _selectedIndex,
@@ -106,19 +117,19 @@ class _MainShellState extends State<MainShell> {
             },
             destinations: const [
               NavigationDestination(
-                icon: Icon(Icons.library_music_outlined),
-                selectedIcon: Icon(Icons.library_music),
-                label: 'Library',
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: 'Home',
               ),
               NavigationDestination(
-                icon: Icon(Icons.search),
+                icon: Icon(Icons.search_outlined),
                 selectedIcon: Icon(Icons.search),
                 label: 'Search',
               ),
               NavigationDestination(
-                icon: Icon(Icons.queue_music_outlined),
-                selectedIcon: Icon(Icons.queue_music),
-                label: 'Now Playing',
+                icon: Icon(Icons.library_music_outlined),
+                selectedIcon: Icon(Icons.library_music),
+                label: 'Library',
               ),
             ],
           ),

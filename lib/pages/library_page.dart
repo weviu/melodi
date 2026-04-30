@@ -1,19 +1,18 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../data/database_helper.dart';
 import '../data/song_model.dart';
 import '../services/download_provider.dart';
 import '../services/music_folder_provider.dart';
-import '../services/player_provider.dart';
 import '../services/playlist_provider.dart';
 import '../services/scanner_service.dart';
+import '../theme.dart';
 import 'playlist_detail_page.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 class LibraryPage extends StatefulWidget {
   const LibraryPage({super.key});
@@ -28,33 +27,53 @@ class _LibraryPageState extends State<LibraryPage> {
 
   List<Song> _songs = [];
   bool _isScanning = false;
+  int _filterIndex = 0; // 0 = Playlists, 1 = Artists
+  Map<String, int> _playlistCounts = {};
 
   @override
   void initState() {
     super.initState();
     _loadFromDb();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DownloadProvider>().addListener(_loadFromDb);
+      context.read<DownloadProvider>().addListener(_onDownloadChanged);
+      context.read<PlaylistProvider>().addListener(_onPlaylistsChanged);
       _loadPlaylists();
     });
   }
 
   @override
   void dispose() {
-    context.read<DownloadProvider>().removeListener(_loadFromDb);
+    context.read<DownloadProvider>().removeListener(_onDownloadChanged);
+    context.read<PlaylistProvider>().removeListener(_onPlaylistsChanged);
     super.dispose();
   }
+
+  void _onDownloadChanged() => _loadFromDb();
+  void _onPlaylistsChanged() => _loadPlaylistCounts();
 
   void _loadPlaylists() {
     final folder = context.read<MusicFolderProvider>().folder;
     if (folder != null) {
-      context.read<PlaylistProvider>().load(folder);
+      context.read<PlaylistProvider>().load(folder).then((_) => _loadPlaylistCounts());
     }
   }
 
   Future<void> _loadFromDb() async {
     final songs = await _db.getAllSongs();
-    if (mounted) setState(() => _songs = songs);
+    if (!mounted) return;
+    setState(() => _songs = songs);
+    await _loadPlaylistCounts();
+  }
+
+  Future<void> _loadPlaylistCounts() async {
+    if (!mounted) return;
+    final provider = context.read<PlaylistProvider>();
+    final counts = <String, int>{};
+    for (final name in provider.playlists) {
+      final songList = await provider.getSongs(name, _songs);
+      counts[name] = songList.length;
+    }
+    if (mounted) setState(() => _playlistCounts = counts);
   }
 
   Future<void> _pickAndScan() async {
@@ -81,10 +100,9 @@ class _LibraryPageState extends State<LibraryPage> {
       return;
     }
 
-    // Persist folder so Search page can use it
     if (mounted) {
       await context.read<MusicFolderProvider>().setFolder(dir);
-      await context.read<PlaylistProvider>().load(dir);
+      if (mounted) await context.read<PlaylistProvider>().load(dir);
     }
 
     setState(() => _isScanning = true);
@@ -109,12 +127,41 @@ class _LibraryPageState extends State<LibraryPage> {
     }
   }
 
+  List<String> get _artists {
+    final set = <String>{};
+    for (final s in _songs) {
+      set.add(s.artist.trim().isEmpty ? 'Unknown Artist' : s.artist);
+    }
+    final list = set.toList()
+      ..sort((a, b) {
+        if (a == 'Unknown Artist') return 1;
+        if (b == 'Unknown Artist') return -1;
+        return a.toLowerCase().compareTo(b.toLowerCase());
+      });
+    return list;
+  }
+
+  Uint8List? _artistArt(String artist) {
+    try {
+      return _songs.firstWhere(
+        (s) =>
+            (s.artist.trim().isEmpty ? 'Unknown Artist' : s.artist) == artist &&
+            s.albumArt != null,
+      ).albumArt;
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final playlists = context.watch<PlaylistProvider>().playlists;
+    final artists = _artists;
 
     return Scaffold(
+      backgroundColor: kBgDark,
       appBar: AppBar(
+        backgroundColor: kBgSurface,
         title: const _MelodiLogo(),
         centerTitle: true,
         actions: [
@@ -137,127 +184,105 @@ class _LibraryPageState extends State<LibraryPage> {
             ),
         ],
       ),
-      body: _songs.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+      body: CustomScrollView(
+        slivers: [
+          // ── Library header ─────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              child: Row(
                 children: [
-                  const Icon(Icons.library_music,
-                      size: 72, color: Colors.white24),
-                  const SizedBox(height: 16),
-                  const Text('No music yet',
-                      style:
-                          TextStyle(fontSize: 18, color: Colors.white54)),
-                  const SizedBox(height: 8),
-                  const Text('Tap the folder icon to scan a directory',
-                      style: TextStyle(color: Colors.white38)),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: _isScanning ? null : _pickAndScan,
-                    icon: const Icon(Icons.folder_open),
-                    label: const Text('Choose Music Folder'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0b007f),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 12),
+                  const Text(
+                    'Your Library',
+                    style: TextStyle(
+                      color: kTextPrimary,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
                     ),
+                  ),
+                  const Spacer(),
+                  _LibraryFilterChip(
+                    label: 'Playlists',
+                    active: _filterIndex == 0,
+                    onTap: () => setState(() => _filterIndex = 0),
+                  ),
+                  const SizedBox(width: 8),
+                  _LibraryFilterChip(
+                    label: 'Artists',
+                    active: _filterIndex == 1,
+                    onTap: () => setState(() => _filterIndex = 1),
+                  ),
+                  const SizedBox(width: 8),
+                  _HoverIconButton(
+                    icon: Icons.add,
+                    onPressed: () => _showCreatePlaylistDialog(context),
                   ),
                 ],
               ),
-            )
-          : CustomScrollView(
-              slivers: [
-                // ── Playlists section ──────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Row(
-                      children: [
-                        const Text('Playlists',
-                            style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.1)),
-                        const Spacer(),
-                        IconButton(
-                          icon: const Icon(Icons.add,
-                              color: Colors.white54, size: 20),
-                          tooltip: 'New playlist',
-                          onPressed: () =>
-                              _showCreatePlaylistDialog(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (playlists.isEmpty)
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: Text('No playlists yet',
-                          style: TextStyle(
-                              color: Colors.white24, fontSize: 13)),
-                    ),
-                  )
-                else
-                  SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 88,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 12),
-                        itemCount: playlists.length,
-                        itemBuilder: (context, i) => _PlaylistChip(
-                          name: playlists[i],
-                          allSongs: _songs,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                // ── Divider ────────────────────────────────────────────
-                const SliverToBoxAdapter(
-                  child: Divider(color: Colors.white12, height: 1),
-                ),
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(16, 12, 16, 6),
-                    child: Text('Songs',
-                        style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.1)),
-                  ),
-                ),
-
-                // ── Songs list ─────────────────────────────────────────
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final song = _songs[index];
-                      return _SongTile(
-                        song: song,
-                        allSongs: _songs,
-                        onTap: () {
-                          context.read<PlayerProvider>().playFromSource(
-                                song,
-                                source: _songs,
-                                index: index,
-                                sourceName: 'Library',
-                              );
-                        },
-                      );
-                    },
-                    childCount: _songs.length,
-                  ),
-                ),
-              ],
             ),
+          ),
+
+          // ── Grid content ────────────────────────────────────────────
+          if (_filterIndex == 0) ...[
+            if (playlists.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _EmptyState(
+                  icon: Icons.music_note,
+                  title: 'Create your first playlist',
+                  subtitle: 'Organise your music into playlists.',
+                  buttonLabel: 'New Playlist',
+                  onButton: () => _showCreatePlaylistDialog(context),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.78,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, i) => _PlaylistCard(
+                      name: playlists[i],
+                      songCount: _playlistCounts[playlists[i]] ?? 0,
+                      allSongs: _songs,
+                    ),
+                    childCount: playlists.length,
+                  ),
+                ),
+              ),
+          ] else ...[
+            if (artists.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: _ArtistEmptyState(),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.78,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, i) => _ArtistCard(
+                      name: artists[i],
+                      art: _artistArt(artists[i]),
+                    ),
+                    childCount: artists.length,
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -266,20 +291,21 @@ class _LibraryPageState extends State<LibraryPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF282828),
-        title: const Text('New Playlist',
-            style: TextStyle(color: Colors.white)),
+        backgroundColor: kHoverBg,
+        title: const Text('New Playlist', style: TextStyle(color: kTextPrimary)),
         content: TextField(
           controller: ctrl,
           autofocus: true,
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: kTextPrimary),
           decoration: const InputDecoration(
             hintText: 'Playlist name',
-            hintStyle: TextStyle(color: Colors.white38),
+            hintStyle: TextStyle(color: Color(0x61FFFFFF)),
             enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.white24)),
+              borderSide: BorderSide(color: Colors.white24),
+            ),
             focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFF0b007f))),
+              borderSide: BorderSide(color: kLilyDark),
+            ),
           ),
           onSubmitted: (v) {
             if (v.trim().isNotEmpty) {
@@ -290,20 +316,17 @@ class _LibraryPageState extends State<LibraryPage> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel',
-                  style: TextStyle(color: Colors.white54))),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: kTextSecondary)),
+          ),
           TextButton(
             onPressed: () {
               if (ctrl.text.trim().isNotEmpty) {
-                context
-                    .read<PlaylistProvider>()
-                    .create(ctrl.text.trim());
+                context.read<PlaylistProvider>().create(ctrl.text.trim());
               }
               Navigator.pop(context);
             },
-            child: const Text('Create',
-                style: TextStyle(color: Color(0xFF6060ff))),
+            child: const Text('Create', style: TextStyle(color: kLilyLight)),
           ),
         ],
       ),
@@ -311,44 +334,191 @@ class _LibraryPageState extends State<LibraryPage> {
   }
 }
 
-class _PlaylistChip extends StatelessWidget {
-  final String name;
-  final List<Song> allSongs;
-  const _PlaylistChip({required this.name, required this.allSongs});
+// ── Filter chip ────────────────────────────────────────────────────────────────
+
+class _LibraryFilterChip extends StatefulWidget {
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _LibraryFilterChip({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  State<_LibraryFilterChip> createState() => _LibraryFilterChipState();
+}
+
+class _LibraryFilterChipState extends State<_LibraryFilterChip> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PlaylistDetailPage(
-            playlistName: name,
-            allSongs: allSongs,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: widget.active
+                ? kTextPrimary
+                : _hovered
+                    ? kLilyLight.withAlpha(51)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            border: widget.active ? null : Border.all(color: Colors.white38),
+          ),
+          child: Text(
+            widget.label,
+            style: TextStyle(
+              color: widget.active ? kBgDark : kTextPrimary,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
       ),
-      onLongPress: () => _showDeleteDialog(context),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF282828),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white12),
+    );
+  }
+}
+
+// ── Hover icon button ──────────────────────────────────────────────────────────
+
+class _HoverIconButton extends StatefulWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _HoverIconButton({required this.icon, required this.onPressed});
+
+  @override
+  State<_HoverIconButton> createState() => _HoverIconButtonState();
+}
+
+class _HoverIconButtonState extends State<_HoverIconButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: _hovered ? kLilyLight : Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Icon(widget.icon, color: kTextPrimary, size: 20),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.queue_music,
-                color: Colors.white54, size: 26),
-            const SizedBox(height: 4),
-            Text(name,
-                style: const TextStyle(
-                    color: Colors.white70, fontSize: 12),
+      ),
+    );
+  }
+}
+
+// ── Playlist card ──────────────────────────────────────────────────────────────
+
+class _PlaylistCard extends StatefulWidget {
+  final String name;
+  final int songCount;
+  final List<Song> allSongs;
+
+  const _PlaylistCard({
+    required this.name,
+    required this.songCount,
+    required this.allSongs,
+  });
+
+  @override
+  State<_PlaylistCard> createState() => _PlaylistCardState();
+}
+
+class _PlaylistCardState extends State<_PlaylistCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PlaylistDetailPage(
+              playlistName: widget.name,
+              allSongs: widget.allSongs,
+            ),
+          ),
+        ),
+        onSecondaryTap: () => _showDeleteDialog(context),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          transform: Matrix4.identity()..scale(_hovered ? 1.03 : 1.0),
+          transformAlignment: Alignment.center,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _hovered ? kHoverBg : kBgSurface,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AspectRatio(
+                aspectRatio: 1,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [kLilyLight, kBgDark],
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.music_note,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                widget.name,
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-          ],
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: kTextPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Playlist \u2022 ${widget.songCount} songs',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: kTextSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -358,23 +528,22 @@ class _PlaylistChip extends StatelessWidget {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF282828),
-        title: Text('Delete "$name"?',
-            style: const TextStyle(color: Colors.white)),
+        backgroundColor: kHoverBg,
+        title: Text('Delete "${widget.name}"?',
+            style: const TextStyle(color: kTextPrimary)),
         content: const Text('This will delete the playlist file.',
-            style: TextStyle(color: Colors.white54)),
+            style: TextStyle(color: kTextSecondary)),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel',
-                  style: TextStyle(color: Colors.white54))),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: kTextSecondary)),
+          ),
           TextButton(
             onPressed: () {
-              context.read<PlaylistProvider>().delete(name);
+              context.read<PlaylistProvider>().delete(widget.name);
               Navigator.pop(context);
             },
-            child: const Text('Delete',
-                style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -382,232 +551,130 @@ class _PlaylistChip extends StatelessWidget {
   }
 }
 
-class _SongTile extends StatelessWidget {
-  final Song song;
-  final List<Song> allSongs;
-  final VoidCallback onTap;
-  const _SongTile(
-      {required this.song, required this.allSongs, required this.onTap});
+// ── Artist card ────────────────────────────────────────────────────────────────
+
+class _ArtistCard extends StatefulWidget {
+  final String name;
+  final Uint8List? art;
+
+  const _ArtistCard({required this.name, this.art});
+
+  @override
+  State<_ArtistCard> createState() => _ArtistCardState();
+}
+
+class _ArtistCardState extends State<_ArtistCard> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onSecondaryTap: () => _showContextMenu(context),
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: _AlbumArt(albumArt: song.albumArt),
-        title: Text(
-          song.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        transform: Matrix4.identity()..scale(_hovered ? 1.03 : 1.0),
+        transformAlignment: Alignment.center,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _hovered ? kHoverBg : kBgSurface,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          children: [
+            AspectRatio(
+              aspectRatio: 1,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(1000),
+                child: widget.art != null
+                    ? Image.memory(widget.art!, fit: BoxFit.cover)
+                    : Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [kLilyLight, kBgDark],
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.person,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              widget.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: kTextPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            const Text(
+              'Artist',
+              style: TextStyle(color: kTextSecondary, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Empty states ───────────────────────────────────────────────────────────────
+
+class _EmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String buttonLabel;
+  final VoidCallback onButton;
+
+  const _EmptyState({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.buttonLabel,
+    required this.onButton,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 64, color: kTextSecondary),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: const TextStyle(
+              color: kTextPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        subtitle: Text(
-          '${song.artist} • ${song.album}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: Colors.white54, fontSize: 13),
-        ),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  void _showContextMenu(BuildContext context) {
-    final playlists = context.read<PlaylistProvider>().playlists;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF282828),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
-              ),
+          const SizedBox(height: 8),
+          Text(subtitle,
+              style: const TextStyle(color: kTextSecondary, fontSize: 14)),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: onButton,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kLilyDark,
+              foregroundColor: kTextPrimary,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: Row(
-                children: [
-                  _AlbumArt(albumArt: song.albumArt),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(song.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold)),
-                        Text(song.artist,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: Colors.white54, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(color: Colors.white12, height: 1),
-
-            // Add to Queue
-            ListTile(
-              leading: const Icon(Icons.add_to_queue,
-                  color: Colors.white70),
-              title: const Text('Add to Queue',
-                  style: TextStyle(color: Colors.white)),
-              onTap: () {
-                context.read<PlayerProvider>().addToQueue(song);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                        '"${song.title}" added to queue'),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              },
-            ),
-
-            // Add to Playlist
-            ListTile(
-              leading: const Icon(Icons.playlist_add,
-                  color: Colors.white70),
-              title: const Text('Add to Playlist',
-                  style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                _showAddToPlaylistSheet(context, playlists);
-              },
-            ),
-
-            // Delete File
-            ListTile(
-              leading:
-                  const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text('Delete File',
-                  style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                _confirmDelete(context);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAddToPlaylistSheet(
-      BuildContext context, List<String> playlists) {
-    if (playlists.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('No playlists yet. Create one first.')),
-      );
-      return;
-    }
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF282828),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Add to playlist',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16)),
-            ),
-            const Divider(color: Colors.white12, height: 1),
-            ...playlists.map(
-              (name) => ListTile(
-                leading: const Icon(Icons.queue_music,
-                    color: Colors.white54),
-                title: Text(name,
-                    style: const TextStyle(color: Colors.white)),
-                onTap: () {
-                  context
-                      .read<PlaylistProvider>()
-                      .addSong(name, song, allSongs);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(
-                            'Added to "$name"'),
-                        duration: const Duration(seconds: 2)),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _confirmDelete(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF282828),
-        title: const Text('Delete file?',
-            style: TextStyle(color: Colors.white)),
-        content: Text(
-            '"${song.title}" will be moved to trash.',
-            style: const TextStyle(color: Colors.white54)),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel',
-                  style: TextStyle(color: Colors.white54))),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                // Move to trash by renaming to .trash folder, or just delete
-                final f = File(song.filePath);
-                if (await f.exists()) await f.delete();
-                // Re-scan to refresh library
-                final db = DatabaseHelper();
-                await db.clearSongs();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('File deleted')),
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Delete failed: $e')),
-                );
-              }
-            },
-            child: const Text('Delete',
-                style: TextStyle(color: Colors.red)),
+            child: Text(buttonLabel),
           ),
         ],
       ),
@@ -615,28 +682,22 @@ class _SongTile extends StatelessWidget {
   }
 }
 
-class _AlbumArt extends StatelessWidget {
-  final Uint8List? albumArt;
-  const _AlbumArt({this.albumArt});
+class _ArtistEmptyState extends StatelessWidget {
+  const _ArtistEmptyState();
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: SizedBox(
-        width: 50,
-        height: 50,
-        child: albumArt != null
-            ? Image.memory(albumArt!, fit: BoxFit.cover)
-            : Container(
-                color: const Color(0xFF282828),
-                child: const Icon(Icons.music_note,
-                    color: Colors.white38, size: 28),
-              ),
+    return const Center(
+      child: Text(
+        'No music in your library yet.\nUse the Search tab to download songs.',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: kTextSecondary, fontSize: 14),
       ),
     );
   }
 }
+
+// ── Melodi logo ────────────────────────────────────────────────────────────────
 
 class _MelodiLogo extends StatelessWidget {
   const _MelodiLogo();
@@ -671,4 +732,3 @@ class _MelodiLogo extends StatelessWidget {
     );
   }
 }
-
