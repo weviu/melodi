@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import '../data/song_model.dart';
+
 import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:provider/provider.dart';
@@ -230,7 +232,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                           overlayShape: const RoundSliderOverlayShape(
                               overlayRadius: 14),
                           activeTrackColor: _accent,
-                          inactiveTrackColor: Colors.white18,
+                          inactiveTrackColor: Colors.white.withAlpha(46),
                           thumbColor: Colors.white,
                           overlayColor: _accent.withAlpha(50),
                         ),
@@ -394,7 +396,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
     );
   }
 
-  void _showAddToPlaylistSheet(BuildContext context, dynamic song) {
+  void _showAddToPlaylistSheet(BuildContext context, Song song) {
     final playlists = context.read<PlaylistProvider>().playlists;
     if (playlists.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -436,7 +438,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                 title: Text(name,
                     style: const TextStyle(color: Colors.white)),
                 onTap: () {
-                  final allSongs = <dynamic>[];
+                  final allSongs = <Song>[];
                   context
                       .read<PlaylistProvider>()
                       .addSong(name, song, allSongs);
