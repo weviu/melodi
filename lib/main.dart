@@ -25,7 +25,11 @@ void main() async {
     sqfliteFfiInit();
   }
 
-  await MetadataGod.initialize();
+  await MetadataGod.initialize().catchError((e) {
+    // Native library may not be available on first install or some devices.
+    // App will still launch; metadata scanning will return empty tags.
+    debugPrint('MetadataGod init failed (non-fatal): $e');
+  });
 
   // Request runtime permissions on Android before anything else
   if (Platform.isAndroid) {

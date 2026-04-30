@@ -376,8 +376,30 @@ class _DownloadButton extends StatelessWidget {
       case DownloadStatus.error:
         return IconButton(
           icon: const Icon(Icons.error_outline, color: Colors.red),
-          tooltip: state.error,
-          onPressed: onDownload,
+          onPressed: () {
+            showDialog<void>(
+              context: context,
+              builder: (_) => AlertDialog(
+                title: const Text('Download failed'),
+                content: SingleChildScrollView(
+                  child: Text(state.error ?? 'Unknown error'),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Dismiss'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      onDownload();
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          },
         );
       case DownloadStatus.idle:
         return IconButton(

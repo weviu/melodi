@@ -40,6 +40,7 @@ class _LibraryPageState extends State<LibraryPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DownloadProvider>().addListener(_onDownloadChanged);
       context.read<PlaylistProvider>().addListener(_onPlaylistsChanged);
+      context.read<MusicFolderProvider>().addListener(_onFolderChanged);
       _loadPlaylists();
     });
   }
@@ -48,11 +49,13 @@ class _LibraryPageState extends State<LibraryPage> {
   void dispose() {
     context.read<DownloadProvider>().removeListener(_onDownloadChanged);
     context.read<PlaylistProvider>().removeListener(_onPlaylistsChanged);
+    context.read<MusicFolderProvider>().removeListener(_onFolderChanged);
     super.dispose();
   }
 
   void _onDownloadChanged() => _loadFromDb();
   void _onPlaylistsChanged() => _loadPlaylistCounts();
+  void _onFolderChanged() => _loadPlaylists();
 
   void _loadPlaylists() {
     final folder = context.read<MusicFolderProvider>().folder;
