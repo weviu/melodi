@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:metadata_god/metadata_god.dart';
 import 'package:path/path.dart' as p;
@@ -40,11 +41,20 @@ class ScannerService {
             );
           }
         } else {
+          // Android/iOS: MetadataGod unavailable; load sidecar .jpg if present
+          Uint8List? sidecarArt;
+          try {
+            final jpgFile = File(p.withoutExtension(entity.path) + '.jpg');
+            if (await jpgFile.exists()) {
+              sidecarArt = await jpgFile.readAsBytes();
+            }
+          } catch (_) {}
           song = Song(
             title: p.basenameWithoutExtension(entity.path),
             artist: 'Unknown Artist',
             album: 'Unknown Album',
             filePath: entity.path,
+            albumArt: sidecarArt,
           );
         }
         songs.add(song);

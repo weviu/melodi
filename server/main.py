@@ -28,9 +28,9 @@ _COOKIES_LOCK = __import__("threading").Lock()
 def _yt_base_args(cookies_path: str | None = None) -> list[str]:
     """Common yt-dlp args applied to every call."""
     args = [
-        "--extractor-args", "youtube:player_client=web",
+        "--extractor-args", "youtube:player_client=mweb,web",
         "--js-runtime", "node",
-        "--cache-dir", "/tmp/yt-dlp-cache",
+        "--cache-dir", "/var/lib/melodi-server/yt-dlp-cache",
     ]
     if cookies_path:
         args += ["--cookies", cookies_path]
@@ -128,20 +128,25 @@ async def search(
     _verify(x_api_key)
 
     try:
-        result = subprocess.run(
-            [
-                "yt-dlp",
-                f"ytsearch{limit}:{q}",
-                "--flat-playlist",
-                "--dump-single-json",
-                "--no-warnings",
-                "--quiet",
-                *_yt_base_args(),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
+        search_tmp = tempfile.mkdtemp(prefix="melodi_search_")
+        try:
+            search_cookies = _copy_cookies(search_tmp)
+            result = subprocess.run(
+                [
+                    "yt-dlp",
+                    f"ytsearch{limit}:{q}",
+                    "--flat-playlist",
+                    "--dump-single-json",
+                    "--no-warnings",
+                    "--quiet",
+                    *_yt_base_args(search_cookies),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        finally:
+            shutil.rmtree(search_tmp, ignore_errors=True)
         if result.returncode != 0:
             # Filter out yt-dlp WARNING lines, show only the real error
             error = '\n'.join(
@@ -256,9 +261,6 @@ async def download(
                     while chunk := fh.read(64 * 1024):
                         yield chunk
             finally:
-                # Sync refreshed YouTube session tokens back to master file
-                # before cleaning up, so the next request stays authenticated.
-                _sync_cookies(cookies)
                 shutil.rmtree(tmp_dir, ignore_errors=True)
 
         encoded_filename = urllib.parse.quote(mp3_path.name)

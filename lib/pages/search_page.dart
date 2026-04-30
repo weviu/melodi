@@ -67,12 +67,13 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-  void _downloadSingle(String videoId, String outputDir) {
+  void _downloadSingle(String videoId, String outputDir, String thumbnailUrl) {
     final downloads = context.read<DownloadProvider>();
     final musicFolder = context.read<MusicFolderProvider>();
     downloads.download(
       videoId,
       outputDir,
+      thumbnailUrl: thumbnailUrl,
       onLibraryChanged: () => musicFolder.setFolder(outputDir),
     );
   }
@@ -81,9 +82,14 @@ class _SearchPageState extends State<SearchPage> {
     if (_selected.isEmpty) return;
     final downloads = context.read<DownloadProvider>();
     final musicFolder = context.read<MusicFolderProvider>();
+    final thumbMap = {
+      for (final r in _results)
+        if (_selected.contains(r.id)) r.id: r.thumbnailUrl,
+    };
     downloads.enqueueBulk(
       _selected.toList(),
       outputDir,
+      thumbnailUrls: thumbMap,
       onLibraryChanged: () => musicFolder.setFolder(outputDir),
     );
     setState(() {
@@ -140,6 +146,8 @@ class _SearchPageState extends State<SearchPage> {
               focusNode: _focusNode,
               onChanged: _onQueryChanged,
               autofocus: true,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => _focusNode.unfocus(),
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Search YouTube...',
@@ -237,7 +245,7 @@ class _SearchPageState extends State<SearchPage> {
                                 },
                                 onDownload: () {
                                   if (outputDir != null) {
-                                    _downloadSingle(r.id, outputDir);
+                                    _downloadSingle(r.id, outputDir, r.thumbnailUrl);
                                   } else {
                                     _promptNoFolder();
                                   }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// A single YouTube search result.
@@ -66,11 +67,13 @@ class YtDlpService {
   }
 
   /// Download [videoId] as MP3 into [outputDir].
+  /// Also saves thumbnail as a .jpg sidecar if [thumbnailUrl] is provided.
   /// Calls [onProgress] with values 0.0–1.0.
   /// Returns the path to the downloaded MP3.
   Future<String> downloadMp3(
     String videoId,
     String outputDir, {
+    String thumbnailUrl = '',
     void Function(double progress)? onProgress,
   }) async {
     final cfg = await _config();
@@ -114,6 +117,18 @@ class YtDlpService {
         }
       } finally {
         await sink.close();
+      }
+
+      // Save thumbnail as sidecar .jpg
+      if (thumbnailUrl.isNotEmpty) {
+        try {
+          final thumb = await http.get(Uri.parse(thumbnailUrl))
+              .timeout(const Duration(seconds: 15));
+          if (thumb.statusCode == 200) {
+            final thumbPath = p.withoutExtension(outFile.path) + '.jpg';
+            await File(thumbPath).writeAsBytes(thumb.bodyBytes);
+          }
+        } catch (_) {}
       }
 
       return outFile.path;

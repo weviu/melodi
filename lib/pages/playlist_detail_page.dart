@@ -416,7 +416,15 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
     final coverArt = _coverImageBytes ?? (_songs.isNotEmpty ? _songs.first.albumArt : null);
     final isMobile = MediaQuery.of(context).size.width < 600;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          FocusScope.of(context).unfocus();
+          Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFF121319),
       bottomNavigationBar: MiniPlayer(
         onTap: () => Navigator.push(
@@ -438,7 +446,10 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
                   backgroundColor: _kAccent.withAlpha(230),
                   leading: IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      FocusScope.of(context).unfocus();
+                      Navigator.pop(context);
+                    },
                   ),
                   title: Text(
                     _name,
@@ -573,13 +584,14 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
                 const SliverToBoxAdapter(child: SizedBox(height: 80)),
               ],
             ),
+    ),
     );
   }
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const _kAccent = Color(0xFF1E4A9E);
+const _kAccent = Color(0xFF0F2F6A);
 
 const _kColHeader = TextStyle(
   color: Color(0xFF888888),
@@ -700,8 +712,8 @@ class _PlaylistHeader extends StatelessWidget {
           end: Alignment.bottomCenter,
           stops: [0.0, 0.65, 1.0],
           colors: [
-            Color(0xFF1E4A9E),
-            Color(0x991E4A9E),
+            Color(0xFF0F2F6A),
+            Color(0x990F2F6A),
             Color(0xFF121319),
           ],
         ),

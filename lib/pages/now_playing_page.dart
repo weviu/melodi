@@ -21,6 +21,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
   Uint8List? _lastArtBytes;
   final FocusNode _focusNode = FocusNode();
   late final PlayerProvider _player;
+  double _dragOffset = 0;
 
   static const _accent = Color(0xFF1E4A9E);
 
@@ -33,7 +34,6 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
     _player.addListener(_onPlayerChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _onPlayerChanged();
-      _focusNode.requestFocus();
     });
   }
 
@@ -86,6 +86,11 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
     return '$m:$s';
   }
 
+  void _close() {
+    FocusScope.of(context).unfocus();
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final player = context.watch<PlayerProvider>();
@@ -116,10 +121,31 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
             .clamp(0.0, 1.0)
         : 0.0;
 
-    return KeyboardListener(
-      focusNode: _focusNode,
-      onKeyEvent: _handleKeyEvent,
-      child: Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _close();
+      },
+      child: GestureDetector(
+        onVerticalDragUpdate: (d) {
+          if (d.delta.dy > 0) setState(() => _dragOffset += d.delta.dy);
+        },
+        onVerticalDragEnd: (d) {
+          if (_dragOffset > 100 || d.velocity.pixelsPerSecond.dy > 500) {
+            _close();
+          } else {
+            setState(() => _dragOffset = 0);
+          }
+        },
+        onVerticalDragCancel: () => setState(() => _dragOffset = 0),
+        child: Transform.translate(
+          offset: Offset(0, _dragOffset.clamp(0.0, 300.0)),
+          child: Opacity(
+            opacity: (1.0 - _dragOffset / 400).clamp(0.5, 1.0),
+            child: KeyboardListener(
+              focusNode: _focusNode,
+              onKeyEvent: _handleKeyEvent,
+              child: Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -157,7 +183,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                             minWidth: 40, minHeight: 40),
                         icon: const Icon(Icons.close, color: Colors.white54),
                         tooltip: 'Close',
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: _close,
                       ),
                       // Centered label + handle
                       Expanded(
@@ -433,6 +459,10 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
         ],
       ),
     ),
+    ),
+          ),
+        ),
+      ),
     );
   }
 

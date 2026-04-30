@@ -52,11 +52,13 @@ class DownloadProvider extends ChangeNotifier {
   bool _processingQueue = false;
 
   Future<void> download(String videoId, String outputDir,
-      {VoidCallback? onLibraryChanged}) async {
+      {String thumbnailUrl = '', VoidCallback? onLibraryChanged}) async {
     _setState(videoId, const DownloadState(status: DownloadStatus.downloading));
 
     try {
-      await _ytDlp.downloadMp3(videoId, outputDir, onProgress: (p) {
+      await _ytDlp.downloadMp3(videoId, outputDir,
+          thumbnailUrl: thumbnailUrl,
+          onProgress: (p) {
         _setState(videoId, _states[videoId]!.copyWith(progress: p));
       });
 
@@ -76,13 +78,15 @@ class DownloadProvider extends ChangeNotifier {
   }
 
   void enqueueBulk(List<String> videoIds, String outputDir,
-      {VoidCallback? onLibraryChanged}) {
+      {Map<String, String> thumbnailUrls = const {},
+      VoidCallback? onLibraryChanged}) {
     for (final id in videoIds) {
       if (stateFor(id).status != DownloadStatus.downloading &&
           stateFor(id).status != DownloadStatus.done) {
         _queue.add(_QueuedDownload(
             videoId: id,
             outputDir: outputDir,
+            thumbnailUrl: thumbnailUrls[id] ?? '',
             onLibraryChanged: onLibraryChanged));
         _setState(id, const DownloadState(status: DownloadStatus.downloading));
       }
@@ -96,6 +100,7 @@ class DownloadProvider extends ChangeNotifier {
     while (_queue.isNotEmpty) {
       final item = _queue.removeAt(0);
       await download(item.videoId, item.outputDir,
+          thumbnailUrl: item.thumbnailUrl,
           onLibraryChanged: item.onLibraryChanged);
     }
     _processingQueue = false;
@@ -111,9 +116,11 @@ class DownloadProvider extends ChangeNotifier {
 class _QueuedDownload {
   final String videoId;
   final String outputDir;
+  final String thumbnailUrl;
   final VoidCallback? onLibraryChanged;
   _QueuedDownload(
       {required this.videoId,
       required this.outputDir,
+      this.thumbnailUrl = '',
       this.onLibraryChanged});
 }
