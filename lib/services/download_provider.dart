@@ -56,15 +56,8 @@ class DownloadProvider extends ChangeNotifier {
     _setState(videoId, const DownloadState(status: DownloadStatus.downloading));
 
     try {
-      await _ytDlp.downloadMp3(videoId, outputDir, onProgress: (line) {
-        final p = _parseProgress(line);
-        _setState(
-          videoId,
-          _states[videoId]!.copyWith(
-            progress: p ?? _states[videoId]!.progress,
-            lastLine: line,
-          ),
-        );
+      await _ytDlp.downloadMp3(videoId, outputDir, onProgress: (p) {
+        _setState(videoId, _states[videoId]!.copyWith(progress: p));
       });
 
       // Re-scan and update DB first, then mark done so listeners see fresh data
@@ -113,16 +106,6 @@ class DownloadProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Parses lines like "[download]  42.5% of ..."
-  double? _parseProgress(String line) {
-    final match = RegExp(r'\[download\]\s+([\d.]+)%').firstMatch(line);
-    if (match != null) {
-      return double.tryParse(match.group(1)!) != null
-          ? double.parse(match.group(1)!) / 100.0
-          : null;
-    }
-    return null;
-  }
 }
 
 class _QueuedDownload {

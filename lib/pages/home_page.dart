@@ -214,8 +214,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildRecentShelf() {
+    final isMobile = MediaQuery.of(context).size.width < 600;
     return SizedBox(
-      height: 220,
+      height: isMobile ? 180.0 : 220.0,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
@@ -239,9 +240,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildPlaylistsShelf(List<String> playlists) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
     final display = playlists.take(10).toList();
     return SizedBox(
-      height: 220,
+      height: isMobile ? 180.0 : 220.0,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
@@ -263,8 +265,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildArtistsShelf() {
+    final isMobile = MediaQuery.of(context).size.width < 600;
     return SizedBox(
-      height: 160,
+      height: isMobile ? 130.0 : 160.0,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
@@ -417,7 +420,7 @@ class _HomeCardState extends State<_HomeCard> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          width: 160,
+          width: MediaQuery.of(context).size.width < 600 ? 130.0 : 160.0,
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: _hovered ? kHoverBg : kBgSurface,
@@ -429,8 +432,8 @@ class _HomeCardState extends State<_HomeCard> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: SizedBox(
-                  width: 144,
-                  height: 144,
+                  width: MediaQuery.of(context).size.width < 600 ? 114.0 : 144.0,
+                  height: MediaQuery.of(context).size.width < 600 ? 114.0 : 144.0,
                   child: widget.art != null
                       ? Image.memory(widget.art!, fit: BoxFit.cover)
                       : Container(
@@ -505,7 +508,7 @@ class _ArtistCardState extends State<_ArtistCard> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          width: 120,
+          width: MediaQuery.of(context).size.width < 600 ? 96.0 : 120.0,
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: _hovered ? kHoverBg : Colors.transparent,
@@ -517,8 +520,8 @@ class _ArtistCardState extends State<_ArtistCard> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(1000),
                 child: SizedBox(
-                  width: 80,
-                  height: 80,
+                  width: MediaQuery.of(context).size.width < 600 ? 64.0 : 80.0,
+                  height: MediaQuery.of(context).size.width < 600 ? 64.0 : 80.0,
                   child: widget.art != null
                       ? Image.memory(widget.art!, fit: BoxFit.cover)
                       : Container(

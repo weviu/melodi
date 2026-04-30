@@ -414,6 +414,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
     final isShuffled = context.watch<PlayerProvider>().isShuffled;
     // Prefer user-picked cover, else fall back to first song's embedded art
     final coverArt = _coverImageBytes ?? (_songs.isNotEmpty ? _songs.first.albumArt : null);
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Scaffold(
       backgroundColor: const Color(0xFF121319),
@@ -431,7 +432,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
               slivers: [
                 // ── Collapsing header ──────────────────────────────
                 SliverAppBar(
-                  expandedHeight: 340,
+                  expandedHeight: isMobile ? 260.0 : 340.0,
                   pinned: true,
                   stretch: true,
                   backgroundColor: _kAccent.withAlpha(230),
@@ -500,27 +501,33 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
-                            child: Row(
-                              children: const [
-                                SizedBox(
-                                  width: 40,
-                                  child: Text('#',
-                                      textAlign: TextAlign.center,
-                                      style: _kColHeader),
-                                ),
-                                SizedBox(width: 8),
-                                Expanded(
-                                    flex: 2,
-                                    child: Text('TITLE', style: _kColHeader)),
-                                Expanded(
-                                    flex: 1,
-                                    child:
-                                        Text('ARTIST', style: _kColHeader)),
-                                Expanded(
-                                    flex: 1,
-                                    child: Text('ALBUM', style: _kColHeader)),
-                                SizedBox(width: 40),
-                              ],
+                            child: Builder(
+                              builder: (context) {
+                                final isMobile = MediaQuery.of(context).size.width < 600;
+                                return Row(
+                                  children: [
+                                    const SizedBox(
+                                      width: 40,
+                                      child: Text('#',
+                                          textAlign: TextAlign.center,
+                                          style: _kColHeader),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Expanded(
+                                        flex: 2,
+                                        child: Text('TITLE', style: _kColHeader)),
+                                    if (!isMobile) ...[
+                                      const Expanded(
+                                          flex: 1,
+                                          child: Text('ARTIST', style: _kColHeader)),
+                                      const Expanded(
+                                          flex: 1,
+                                          child: Text('ALBUM', style: _kColHeader)),
+                                    ],
+                                    const SizedBox(width: 40),
+                                  ],
+                                );
+                              },
                             ),
                           ),
                           const Divider(color: Color(0xFF2A2D35), height: 1),
@@ -598,6 +605,94 @@ class _PlaylistHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final coverSize = isMobile ? 140.0 : 220.0;
+
+    final coverWidget = Container(
+      width: coverSize,
+      height: coverSize,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(160),
+            blurRadius: 32,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: coverArt != null
+            ? Image.memory(coverArt!, fit: BoxFit.cover)
+            : Container(
+                color: const Color(0xFF1A2340),
+                child: const Icon(Icons.queue_music,
+                    size: 80, color: Colors.white24),
+              ),
+      ),
+    );
+
+    final metaWidget = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text(
+          'PLAYLIST',
+          style: TextStyle(
+            color: Color(0xFFB1C5FF),
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.4,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          name,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: isMobile ? 28.0 : 36.0,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+            height: 1.1,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 16),
+        if (description.isNotEmpty) ...[
+          Text(
+            description,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        Row(
+          children: [
+            const Text('My Library',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600)),
+            const Text(' • ',
+                style: TextStyle(color: Colors.white54, fontSize: 14)),
+            Text(
+              '$songCount ${songCount == 1 ? 'song' : 'songs'}',
+              style: const TextStyle(color: Colors.white54, fontSize: 14),
+            ),
+          ],
+        ),
+      ],
+    );
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -614,104 +709,30 @@ class _PlaylistHeader extends StatelessWidget {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(32, 60, 32, 20),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // Cover art 220×220
-              Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(160),
-                      blurRadius: 32,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: coverArt != null
-                      ? Image.memory(coverArt!, fit: BoxFit.cover)
-                      : Container(
-                          color: const Color(0xFF1A2340),
-                          child: const Icon(Icons.queue_music,
-                              size: 80, color: Colors.white24),
-                        ),
-                ),
-              ),
-
-              const SizedBox(width: 32),
-
-              // Metadata
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    const Text(
-                      'PLAYLIST',
-                      style: TextStyle(
-                        color: Color(0xFFB1C5FF),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 36,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                        height: 1.1,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 16),
-                    if (description.isNotEmpty) ...
-                      [
-                        Text(
-                          description,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                    Row(
-                      children: [
-                        const Text('My Library',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600)),
-                        const Text(' • ',
-                            style: TextStyle(
-                                color: Colors.white54, fontSize: 14)),
-                        Text(
-                          '$songCount ${songCount == 1 ? 'song' : 'songs'}',
-                          style: const TextStyle(
-                              color: Colors.white54, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          padding: EdgeInsets.fromLTRB(
+            isMobile ? 20 : 32,
+            isMobile ? 56 : 60,
+            isMobile ? 20 : 32,
+            20,
           ),
+          child: isMobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    coverWidget,
+                    const SizedBox(height: 16),
+                    metaWidget,
+                  ],
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    coverWidget,
+                    const SizedBox(width: 32),
+                    Expanded(child: metaWidget),
+                  ],
+                ),
         ),
       ),
     );
@@ -877,6 +898,7 @@ class _SongRowState extends State<_SongRow> {
     final player = context.watch<PlayerProvider>();
     final isCurrent = player.currentSong?.filePath == widget.song.filePath;
     final isPlaying = isCurrent && player.isPlaying;
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -981,28 +1003,30 @@ class _SongRowState extends State<_SongRow> {
                   ),
 
                   // Artist column (flex 1)
-                  Expanded(
-                    flex: 1,
-                    child: Text(
-                      widget.song.artist,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: Color(0xFF888888), fontSize: 13),
+                  if (!isMobile)
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        widget.song.artist,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Color(0xFF888888), fontSize: 13),
+                      ),
                     ),
-                  ),
 
                   // Album column (flex 1)
-                  Expanded(
-                    flex: 1,
-                    child: Text(
-                      widget.song.album,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: Color(0xFF888888), fontSize: 13),
+                  if (!isMobile)
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        widget.song.album,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Color(0xFF888888), fontSize: 13),
+                      ),
                     ),
-                  ),
 
                   // Heart icon (visible on hover or when liked)
                   SizedBox(

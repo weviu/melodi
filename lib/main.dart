@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:metadata_god/metadata_god.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -16,8 +19,22 @@ import 'widgets/mini_player.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  sqfliteFfiInit();
+
+  // SQLite FFI only needed on desktop (Linux/Windows/macOS)
+  if (!Platform.isAndroid && !Platform.isIOS) {
+    sqfliteFfiInit();
+  }
+
   await MetadataGod.initialize();
+
+  // Request runtime permissions on Android before anything else
+  if (Platform.isAndroid) {
+    await [
+      Permission.audio,        // READ_MEDIA_AUDIO
+      Permission.notification, // POST_NOTIFICATIONS (mandatory Android 13+)
+    ].request();
+  }
+
   runApp(
     MultiProvider(
       providers: [

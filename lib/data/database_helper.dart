@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart' as sqflite_native;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'song_model.dart';
@@ -19,50 +22,65 @@ class DatabaseHelper {
   Future<Database> _initDb() async {
     final dir = await getApplicationSupportDirectory();
     final dbPath = p.join(dir.path, 'melodi.db');
+
+    // On Android/iOS use native SQLite; on desktop use FFI
+    if (Platform.isAndroid || Platform.isIOS) {
+      return sqflite_native.openDatabase(
+        dbPath,
+        version: 2,
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+      );
+    }
+
     return databaseFactoryFfi.openDatabase(
       dbPath,
       options: OpenDatabaseOptions(
         version: 2,
-        onCreate: (db, version) async {
-          await db.execute('''
-            CREATE TABLE songs (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              title TEXT NOT NULL,
-              artist TEXT NOT NULL,
-              album TEXT NOT NULL,
-              file_path TEXT NOT NULL UNIQUE,
-              album_art BLOB,
-              play_count INTEGER DEFAULT 0
-            )
-          ''');
-          await db.execute('''
-            CREATE TABLE recent_items (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              item_type TEXT NOT NULL,
-              item_id TEXT NOT NULL,
-              played_at TEXT NOT NULL,
-              UNIQUE(item_type, item_id)
-            )
-          ''');
-        },
-        onUpgrade: (db, oldVersion, newVersion) async {
-          if (oldVersion < 2) {
-            await db.execute(
-              'ALTER TABLE songs ADD COLUMN play_count INTEGER DEFAULT 0',
-            );
-            await db.execute('''
-              CREATE TABLE IF NOT EXISTS recent_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                item_type TEXT NOT NULL,
-                item_id TEXT NOT NULL,
-                played_at TEXT NOT NULL,
-                UNIQUE(item_type, item_id)
-              )
-            ''');
-          }
-        },
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
       ),
     );
+  }
+
+  Future<void> _onCreate(Database db, int version) async {
+    await db.execute('''
+      CREATE TABLE songs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        artist TEXT NOT NULL,
+        album TEXT NOT NULL,
+        file_path TEXT NOT NULL UNIQUE,
+        album_art BLOB,
+        play_count INTEGER DEFAULT 0
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE recent_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_type TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        played_at TEXT NOT NULL,
+        UNIQUE(item_type, item_id)
+      )
+    ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+        'ALTER TABLE songs ADD COLUMN play_count INTEGER DEFAULT 0',
+      );
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS recent_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          item_type TEXT NOT NULL,
+          item_id TEXT NOT NULL,
+          played_at TEXT NOT NULL,
+          UNIQUE(item_type, item_id)
+        )
+      ''');
+    }
   }
 
   // ── Songs ──────────────────────────────────────────────────────────────────

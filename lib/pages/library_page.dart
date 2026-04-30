@@ -160,6 +160,7 @@ class _LibraryPageState extends State<LibraryPage> {
   Widget build(BuildContext context) {
     final playlists = context.watch<PlaylistProvider>().playlists;
     final artists = _artists;
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Scaffold(
       backgroundColor: kBgDark,
@@ -193,40 +194,73 @@ class _LibraryPageState extends State<LibraryPage> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-              child: Row(
-                children: [
-                  const Text(
-                    'Your Library',
-                    style: TextStyle(
-                      color: kTextPrimary,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final filterChips = <Widget>[
+                    _LibraryFilterChip(
+                      label: 'Playlists',
+                      active: _filterIndex == 0,
+                      onTap: () => setState(() => _filterIndex = 0),
                     ),
-                  ),
-                  const Spacer(),
-                  _LibraryFilterChip(
-                    label: 'Playlists',
-                    active: _filterIndex == 0,
-                    onTap: () => setState(() => _filterIndex = 0),
-                  ),
-                  const SizedBox(width: 8),
-                  _LibraryFilterChip(
-                    label: 'Artists',
-                    active: _filterIndex == 1,
-                    onTap: () => setState(() => _filterIndex = 1),
-                  ),
-                  const SizedBox(width: 8),
-                  _LibraryFilterChip(
-                    label: 'Songs',
-                    active: _filterIndex == 2,
-                    onTap: () => setState(() => _filterIndex = 2),
-                  ),
-                  const SizedBox(width: 8),
-                  _HoverIconButton(
-                    icon: Icons.add,
-                    onPressed: () => _showCreatePlaylistDialog(context),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    _LibraryFilterChip(
+                      label: 'Artists',
+                      active: _filterIndex == 1,
+                      onTap: () => setState(() => _filterIndex = 1),
+                    ),
+                    const SizedBox(width: 8),
+                    _LibraryFilterChip(
+                      label: 'Songs',
+                      active: _filterIndex == 2,
+                      onTap: () => setState(() => _filterIndex = 2),
+                    ),
+                  ];
+                  if (constraints.maxWidth < 480) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'Your Library',
+                              style: TextStyle(
+                                color: kTextPrimary,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Spacer(),
+                            _HoverIconButton(
+                              icon: Icons.add,
+                              onPressed: () => _showCreatePlaylistDialog(context),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(children: filterChips),
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      const Text(
+                        'Your Library',
+                        style: TextStyle(
+                          color: kTextPrimary,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      ...filterChips,
+                      const SizedBox(width: 8),
+                      _HoverIconButton(
+                        icon: Icons.add,
+                        onPressed: () => _showCreatePlaylistDialog(context),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -248,8 +282,8 @@ class _LibraryPageState extends State<LibraryPage> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: isMobile ? 2 : 4,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
                     childAspectRatio: 0.78,
@@ -274,8 +308,8 @@ class _LibraryPageState extends State<LibraryPage> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: isMobile ? 2 : 4,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 12,
                     childAspectRatio: 0.78,

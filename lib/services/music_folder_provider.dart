@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MusicFolderProvider extends ChangeNotifier {
@@ -14,6 +18,18 @@ class MusicFolderProvider extends ChangeNotifier {
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     _folder = prefs.getString(_key);
+
+    // On Android, auto-set a default folder if none is saved yet
+    if (_folder == null && Platform.isAndroid) {
+      final extDir = await getExternalStorageDirectory();
+      if (extDir != null) {
+        final defaultDir = Directory(p.join(extDir.path, 'Music', 'Melodi'));
+        await defaultDir.create(recursive: true);
+        _folder = defaultDir.path;
+        await prefs.setString(_key, _folder!);
+      }
+    }
+
     notifyListeners();
   }
 
