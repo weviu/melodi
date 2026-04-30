@@ -207,19 +207,6 @@ class _HomePageState extends State<HomePage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const Spacer(),
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: kLilyLight,
-              child: const Text(
-                'U',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
           ],
         ),
       ),
