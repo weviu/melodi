@@ -337,7 +337,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _onPlaylistTap(String name) async {
     final songs = await _db.getAllSongs();
     if (!mounted) return;
-    Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PlaylistDetailPage(
@@ -346,6 +346,7 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+    if (mounted) _loadData();
   }
 }
 

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -8,7 +9,9 @@ import 'package:provider/provider.dart';
 import '../data/database_helper.dart';
 import '../data/song_model.dart';
 import '../services/download_provider.dart';
+import '../services/m3u_service.dart';
 import '../services/music_folder_provider.dart';
+import '../services/player_provider.dart';
 import '../services/playlist_provider.dart';
 import '../services/scanner_service.dart';
 import '../theme.dart';
@@ -213,6 +216,12 @@ class _LibraryPageState extends State<LibraryPage> {
                     onTap: () => setState(() => _filterIndex = 1),
                   ),
                   const SizedBox(width: 8),
+                  _LibraryFilterChip(
+                    label: 'Songs',
+                    active: _filterIndex == 2,
+                    onTap: () => setState(() => _filterIndex = 2),
+                  ),
+                  const SizedBox(width: 8),
                   _HoverIconButton(
                     icon: Icons.add,
                     onPressed: () => _showCreatePlaylistDialog(context),
@@ -255,7 +264,7 @@ class _LibraryPageState extends State<LibraryPage> {
                   ),
                 ),
               ),
-          ] else ...[
+          ] else if (_filterIndex == 1) ...[
             if (artists.isEmpty)
               const SliverFillRemaining(
                 hasScrollBody: false,
@@ -277,6 +286,32 @@ class _LibraryPageState extends State<LibraryPage> {
                       art: _artistArt(artists[i]),
                     ),
                     childCount: artists.length,
+                  ),
+                ),
+              ),
+          ] else ...[
+            // Songs tab
+            if (_songs.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _EmptyState(
+                  icon: Icons.download_done,
+                  title: 'No songs yet',
+                  subtitle: 'Download songs from the Search tab.',
+                  buttonLabel: 'Choose Folder',
+                  onButton: _pickAndScan,
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, i) => _SongRow(
+                      song: _songs[i],
+                      allSongs: _songs,
+                    ),
+                    childCount: _songs.length,
                   ),
                 ),
               ),
@@ -446,6 +481,29 @@ class _PlaylistCard extends StatefulWidget {
 
 class _PlaylistCardState extends State<_PlaylistCard> {
   bool _hovered = false;
+  Uint8List? _cover;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCover();
+  }
+
+  Future<void> _loadCover() async {
+    final folder =
+        context.read<MusicFolderProvider>().folder;
+    if (folder == null) return;
+    final path = await M3uService().coverPath(folder, widget.name);
+    if (!mounted) return;
+    if (path == null) {
+      setState(() => _cover = null);
+      return;
+    }
+    try {
+      final bytes = await File(path).readAsBytes();
+      if (mounted) setState(() => _cover = bytes);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -454,15 +512,18 @@ class _PlaylistCardState extends State<_PlaylistCard> {
       onExit: (_) => setState(() => _hovered = false),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PlaylistDetailPage(
-              playlistName: widget.name,
-              allSongs: widget.allSongs,
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PlaylistDetailPage(
+                playlistName: widget.name,
+                allSongs: widget.allSongs,
+              ),
             ),
-          ),
-        ),
+          );
+          _loadCover();
+        },
         onSecondaryTap: () => _showDeleteDialog(context),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
@@ -480,20 +541,22 @@ class _PlaylistCardState extends State<_PlaylistCard> {
                 aspectRatio: 1,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(6),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [kLilyLight, kBgDark],
+                  child: _cover != null
+                    ? Image.memory(_cover!, fit: BoxFit.cover)
+                    : Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [kLilyLight, kBgDark],
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.music_note,
+                          color: Colors.white,
+                          size: 32,
+                        ),
                       ),
-                    ),
-                    child: const Icon(
-                      Icons.music_note,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -546,6 +609,186 @@ class _PlaylistCardState extends State<_PlaylistCard> {
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Song row ───────────────────────────────────────────────────────────────────
+
+class _SongRow extends StatefulWidget {
+  final Song song;
+  final List<Song> allSongs;
+
+  const _SongRow({required this.song, required this.allSongs});
+
+  @override
+  State<_SongRow> createState() => _SongRowState();
+}
+
+class _SongRowState extends State<_SongRow> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final player = context.read<PlayerProvider>();
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => player.playFromSource(
+          widget.song,
+          source: widget.allSongs,
+          index: widget.allSongs.indexOf(widget.song),
+          sourceName: 'Library',
+        ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          color: _hovered ? kHoverBg : Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              // Album art thumbnail
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: widget.song.albumArt != null
+                      ? Image.memory(widget.song.albumArt!, fit: BoxFit.cover)
+                      : Container(
+                          color: kBgSurface,
+                          child: const Icon(Icons.music_note,
+                              color: kTextSecondary, size: 20),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Title + artist
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.song.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: kTextPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.song.artist.trim().isEmpty
+                          ? 'Unknown Artist'
+                          : widget.song.artist,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: kTextSecondary, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              // More button
+              IconButton(
+                icon: const Icon(Icons.more_vert,
+                    color: kTextSecondary, size: 20),
+                onPressed: () => _showSongMenu(context),
+                splashRadius: 18,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSongMenu(BuildContext context) {
+    final playlists = context.read<PlaylistProvider>().playlists;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: kBgSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: widget.song.albumArt != null
+                          ? Image.memory(widget.song.albumArt!,
+                              fit: BoxFit.cover)
+                          : Container(
+                              color: kHoverBg,
+                              child: const Icon(Icons.music_note,
+                                  color: kTextSecondary)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.song.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: kTextPrimary,
+                                fontWeight: FontWeight.bold)),
+                        Text(
+                            widget.song.artist.trim().isEmpty
+                                ? 'Unknown Artist'
+                                : widget.song.artist,
+                            style: const TextStyle(
+                                color: kTextSecondary, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(color: Color(0xFF333333)),
+            if (playlists.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Text('No playlists yet',
+                    style: TextStyle(color: kTextSecondary)),
+              )
+            else
+              ...playlists.map(
+                (name) => ListTile(
+                  leading:
+                      const Icon(Icons.playlist_add, color: kTextSecondary),
+                  title: Text(name,
+                      style: const TextStyle(color: kTextPrimary)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    context
+                        .read<PlaylistProvider>()
+                        .addSong(name, widget.song, widget.allSongs);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content:
+                              Text('Added to $name')),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
