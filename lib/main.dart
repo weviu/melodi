@@ -25,11 +25,13 @@ void main() async {
     sqfliteFfiInit();
   }
 
-  await MetadataGod.initialize().catchError((e) {
-    // Native library may not be available on first install or some devices.
-    // App will still launch; metadata scanning will return empty tags.
-    debugPrint('MetadataGod init failed (non-fatal): $e');
-  });
+  // MetadataGod uses a Rust/CargoKit native library that is not compiled
+  // for Android in this build. Skip it on Android to avoid a startup hang.
+  if (!Platform.isAndroid && !Platform.isIOS) {
+    await MetadataGod.initialize().catchError((e) {
+      debugPrint('MetadataGod init failed (non-fatal): $e');
+    });
+  }
 
   // Request runtime permissions on Android before anything else
   if (Platform.isAndroid) {

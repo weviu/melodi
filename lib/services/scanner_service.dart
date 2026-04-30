@@ -14,22 +14,32 @@ class ScannerService {
       if (entity is File &&
           entity.path.toLowerCase().endsWith('.mp3')) {
         Song song;
-        try {
-          final metadata = await MetadataGod.readMetadata(file: entity.path);
-          song = Song(
-            title: (metadata.title?.isNotEmpty == true)
-                ? metadata.title!
-                : p.basenameWithoutExtension(entity.path),
-            artist: (metadata.artist?.isNotEmpty == true)
-                ? metadata.artist!
-                : 'Unknown Artist',
-            album: (metadata.album?.isNotEmpty == true)
-                ? metadata.album!
-                : 'Unknown Album',
-            filePath: entity.path,
-            albumArt: metadata.picture?.data,
-          );
-        } catch (_) {
+        // MetadataGod native library is not available on Android builds.
+        if (!Platform.isAndroid && !Platform.isIOS) {
+          try {
+            final metadata = await MetadataGod.readMetadata(file: entity.path);
+            song = Song(
+              title: (metadata.title?.isNotEmpty == true)
+                  ? metadata.title!
+                  : p.basenameWithoutExtension(entity.path),
+              artist: (metadata.artist?.isNotEmpty == true)
+                  ? metadata.artist!
+                  : 'Unknown Artist',
+              album: (metadata.album?.isNotEmpty == true)
+                  ? metadata.album!
+                  : 'Unknown Album',
+              filePath: entity.path,
+              albumArt: metadata.picture?.data,
+            );
+          } catch (_) {
+            song = Song(
+              title: p.basenameWithoutExtension(entity.path),
+              artist: 'Unknown Artist',
+              album: 'Unknown Album',
+              filePath: entity.path,
+            );
+          }
+        } else {
           song = Song(
             title: p.basenameWithoutExtension(entity.path),
             artist: 'Unknown Artist',
