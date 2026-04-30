@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import '../data/song_model.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:provider/provider.dart';
 
@@ -20,6 +21,7 @@ class NowPlayingPage extends StatefulWidget {
 class _NowPlayingPageState extends State<NowPlayingPage> {
   Color _bgColor = const Color(0xFF191C23);
   Uint8List? _lastArtBytes;
+  final FocusNode _focusNode = FocusNode();
 
   static const _accent = Color(0xFF1E4A9E);
 
@@ -30,13 +32,22 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
       final player = context.read<PlayerProvider>();
       player.addListener(_onPlayerChanged);
       _onPlayerChanged();
+      _focusNode.requestFocus();
     });
   }
 
   @override
   void dispose() {
     context.read<PlayerProvider>().removeListener(_onPlayerChanged);
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  void _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.space) {
+      context.read<PlayerProvider>().togglePlayPause();
+    }
   }
 
   void _onPlayerChanged() {
@@ -103,7 +114,10 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
             .clamp(0.0, 1.0)
         : 0.0;
 
-    return Scaffold(
+    return KeyboardListener(
+      focusNode: _focusNode,
+      onKeyEvent: _handleKeyEvent,
+      child: Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -128,26 +142,47 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
           SafeArea(
             child: Column(
               children: [
-                // Collapse handle
-                const SizedBox(height: 10),
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // NOW PLAYING label
-                const Text(
-                  'NOW PLAYING',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.4,
+                // Top bar: X button + NOW PLAYING label + spacer
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Collapse handle centered
+                      Column(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.white24,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'NOW PLAYING',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                      // X button top-left
+                      Positioned(
+                        left: 4,
+                        top: 0,
+                        child: IconButton(
+                          iconSize: 22,
+                          icon: const Icon(Icons.close, color: Colors.white54),
+                          tooltip: 'Close',
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
@@ -393,6 +428,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
           ),
         ],
       ),
+    ),
     );
   }
 
