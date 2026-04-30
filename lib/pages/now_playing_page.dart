@@ -22,15 +22,18 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
   Color _bgColor = const Color(0xFF191C23);
   Uint8List? _lastArtBytes;
   final FocusNode _focusNode = FocusNode();
+  late final PlayerProvider _player;
 
   static const _accent = Color(0xFF1E4A9E);
 
   @override
   void initState() {
     super.initState();
+    // Cache provider reference — safe to use in dispose() and listener callbacks
+    // without touching `context` after deactivation.
+    _player = context.read<PlayerProvider>();
+    _player.addListener(_onPlayerChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final player = context.read<PlayerProvider>();
-      player.addListener(_onPlayerChanged);
       _onPlayerChanged();
       _focusNode.requestFocus();
     });
@@ -38,7 +41,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
 
   @override
   void dispose() {
-    context.read<PlayerProvider>().removeListener(_onPlayerChanged);
+    _player.removeListener(_onPlayerChanged);
     _focusNode.dispose();
     super.dispose();
   }
@@ -46,12 +49,13 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
   void _handleKeyEvent(KeyEvent event) {
     if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.space) {
-      context.read<PlayerProvider>().togglePlayPause();
+      _player.togglePlayPause();
     }
   }
 
   void _onPlayerChanged() {
-    final song = context.read<PlayerProvider>().currentSong;
+    if (!mounted) return;
+    final song = _player.currentSong;
     if (song?.albumArt != _lastArtBytes) {
       _lastArtBytes = song?.albumArt;
       _extractColor(song?.albumArt);
