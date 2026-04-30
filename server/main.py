@@ -91,6 +91,7 @@ async def search(
                 "--dump-single-json",
                 "--no-warnings",
                 "--quiet",
+                "--extractor-args", "youtube:player_client=ios,web",
             ],
             capture_output=True,
             text=True,
@@ -144,7 +145,11 @@ async def download(
     try:
         # Fetch metadata (title / artist) before downloading
         meta_proc = subprocess.run(
-            ["yt-dlp", "--dump-single-json", "--no-warnings", "--quiet", body.url],
+            [
+                "yt-dlp", "--dump-single-json", "--no-warnings", "--quiet",
+                "--extractor-args", "youtube:player_client=ios,web",
+                body.url,
+            ],
             capture_output=True,
             text=True,
             timeout=30,
@@ -165,6 +170,7 @@ async def download(
                 "--concurrent-fragments", "4",
                 "--embed-thumbnail",
                 "--add-metadata",
+                "--extractor-args", "youtube:player_client=ios,web",
                 "-o", os.path.join(tmp_dir, "%(title)s.%(ext)s"),
                 "--no-warnings",
                 "--quiet",

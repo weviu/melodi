@@ -59,8 +59,6 @@ class _SearchPageState extends State<SearchPage> {
       final results = await _ytDlp.search(query);
       if (mounted) {
         setState(() => _results = results);
-        // Re-claim focus so backspace keeps working after results render
-        _focusNode.requestFocus();
       }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());

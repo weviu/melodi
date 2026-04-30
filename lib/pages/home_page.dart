@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../data/database_helper.dart';
@@ -152,6 +153,11 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       backgroundColor: kBgDark,
+      appBar: AppBar(
+        title: _buildLogoTitle(),
+        backgroundColor: const Color(0xFF181818),
+        elevation: 0,
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: kLilyLight))
           : allEmpty
@@ -159,7 +165,6 @@ class _HomePageState extends State<HomePage> {
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(),
                     const Divider(color: Color(0xFF282828), height: 1),
                     Expanded(
                       child: SingleChildScrollView(
@@ -192,24 +197,31 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildHeader() {
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-        child: Row(
-          children: [
-            Text(
-              _greeting,
-              style: const TextStyle(
-                color: kTextPrimary,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+  Widget _buildLogoTitle() {
+    const color = Color(0xFF1E4A9E);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SvgPicture.asset(
+          'lily.svg',
+          width: 36,
+          height: 36,
+          fit: BoxFit.contain,
         ),
-      ),
+        const SizedBox(width: 8),
+        const Text(
+          'MELODI',
+          style: TextStyle(
+            color: color,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 4,
+            fontFamily: 'Analogue BC',
+            height: 1.0,
+          ),
+        ),
+      ],
     );
   }
 
