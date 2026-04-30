@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 
@@ -57,6 +58,58 @@ class M3uService {
     final dir = await playlistsDir(musicFolder);
     final file = File(p.join(dir.path, '$name.m3u'));
     if (await file.exists()) await file.delete();
+  }
+
+  // ── Sidecar metadata (description + cover path) ──────────────────────────
+
+  Future<Map<String, dynamic>> readMeta(
+      String musicFolder, String name) async {
+    final dir = await playlistsDir(musicFolder);
+    final file = File(p.join(dir.path, '$name.json'));
+    if (!await file.exists()) return {};
+    try {
+      return jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> writeMeta(
+      String musicFolder, String name, Map<String, dynamic> meta) async {
+    final dir = await playlistsDir(musicFolder);
+    final file = File(p.join(dir.path, '$name.json'));
+    await file.writeAsString(jsonEncode(meta));
+  }
+
+  /// Renames the .m3u and any sidecar files (.json, .jpg).
+  Future<void> renamePlaylist(
+      String musicFolder, String oldName, String newName) async {
+    final dir = await playlistsDir(musicFolder);
+    for (final ext in ['.m3u', '.json', '.jpg', '.png']) {
+      final old = File(p.join(dir.path, '$oldName$ext'));
+      if (await old.exists()) {
+        await old.rename(p.join(dir.path, '$newName$ext'));
+      }
+    }
+  }
+
+  /// Returns the path of the cover image if it exists, else null.
+  Future<String?> coverPath(String musicFolder, String name) async {
+    final dir = await playlistsDir(musicFolder);
+    for (final ext in ['.jpg', '.png']) {
+      final f = File(p.join(dir.path, '$name$ext'));
+      if (await f.exists()) return f.path;
+    }
+    return null;
+  }
+
+  /// Saves an image file as the playlist cover (copies to Playlists/).
+  Future<void> saveCover(
+      String musicFolder, String name, String sourcePath) async {
+    final dir = await playlistsDir(musicFolder);
+    final ext = p.extension(sourcePath).toLowerCase();
+    final dest = File(p.join(dir.path, '$name$ext'));
+    await File(sourcePath).copy(dest.path);
   }
 
   /// Appends a song to an existing playlist.

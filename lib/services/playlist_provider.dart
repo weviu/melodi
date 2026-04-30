@@ -23,6 +23,12 @@ class PlaylistProvider extends ChangeNotifier {
     await load(_musicFolder!);
   }
 
+  Future<void> rename(String oldName, String newName) async {
+    if (_musicFolder == null || newName.trim().isEmpty) return;
+    await _m3u.renamePlaylist(_musicFolder!, oldName, newName.trim());
+    await load(_musicFolder!);
+  }
+
   Future<void> delete(String name) async {
     if (_musicFolder == null) return;
     await _m3u.deletePlaylist(_musicFolder!, name);

@@ -1,10 +1,14 @@
-import 'dart:typed_data';
+import 'dart:io';
 import 'dart:ui';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../data/song_model.dart';
+import '../services/music_folder_provider.dart';
+import '../services/m3u_service.dart';
 import '../services/player_provider.dart';
 import '../services/playlist_provider.dart';
 import '../widgets/mini_player.dart';
@@ -29,10 +33,18 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
   bool _loading = true;
   final Set<String> _likedPaths = {};
 
+  late String _name;
+  String _description = '';
+  Uint8List? _coverImageBytes; // custom cover picked by user
+
+  final _m3u = M3uService();
+
   @override
   void initState() {
     super.initState();
+    _name = widget.playlistName;
     _load();
+    _loadMeta();
   }
 
   Future<void> _load() async {
@@ -46,13 +58,265 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
     });
   }
 
+  Future<void> _loadMeta() async {
+    final folder = context.read<MusicFolderProvider>().folder;
+    if (folder == null) return;
+    final meta = await _m3u.readMeta(folder, _name);
+    final coverPath = await _m3u.coverPath(folder, _name);
+    if (!mounted) return;
+    setState(() {
+      _description = (meta['description'] as String?) ?? '';
+      if (coverPath != null) {
+        _coverImageBytes = File(coverPath).readAsBytesSync();
+      }
+    });
+  }
+
+  Future<void> _saveMeta() async {
+    final folder = context.read<MusicFolderProvider>().folder;
+    if (folder == null) return;
+    await _m3u.writeMeta(folder, _name, {'description': _description});
+  }
+
+  void _showMoreSheet(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      backgroundColor: const Color(0xFF252830),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.drive_file_rename_outline,
+                  color: Colors.white70),
+              title: const Text('Edit name',
+                  style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _editName(ctx);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.notes, color: Colors.white70),
+              title: const Text('Edit description',
+                  style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _editDescription(ctx);
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.image_outlined, color: Colors.white70),
+              title: const Text('Edit cover',
+                  style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _editCover();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.file_copy_outlined,
+                  color: Colors.white70),
+              title: const Text('Copy playlist path',
+                  style: TextStyle(color: Colors.white)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final folder = context.read<MusicFolderProvider>().folder;
+                if (folder != null) {
+                  final path = '$folder/Playlists/$_name.m3u';
+                  await Clipboard.setData(ClipboardData(text: path));
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Path copied to clipboard')),
+                    );
+                  }
+                }
+              },
+            ),
+            const Divider(color: Colors.white12, height: 1),
+            ListTile(
+              leading:
+                  const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Delete playlist',
+                  style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _deletePlaylist(ctx);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _editName(BuildContext ctx) {
+    final ctrl = TextEditingController(text: _name);
+    showDialog(
+      context: ctx,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF282828),
+        title: const Text('Edit name',
+            style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Playlist name',
+            hintStyle: TextStyle(color: Colors.white38),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.white24),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: _kAccent),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () async {
+              final newName = ctrl.text.trim();
+              if (newName.isEmpty || newName == _name) {
+                Navigator.pop(ctx);
+                return;
+              }
+              Navigator.pop(ctx);
+              final folder = context.read<MusicFolderProvider>().folder;
+              if (folder != null) {
+                await context
+                    .read<PlaylistProvider>()
+                    .rename(_name, newName);
+              }
+              if (!mounted) return;
+              setState(() => _name = newName);
+            },
+            child: const Text('Save',
+                style: TextStyle(color: _kAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editDescription(BuildContext ctx) {
+    final ctrl = TextEditingController(text: _description);
+    showDialog(
+      context: ctx,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF282828),
+        title: const Text('Edit description',
+            style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          maxLines: 4,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Add a description…',
+            hintStyle: TextStyle(color: Colors.white38),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.white24),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: _kAccent),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () async {
+              final desc = ctrl.text.trim();
+              Navigator.pop(ctx);
+              if (!mounted) return;
+              setState(() => _description = desc);
+              await _saveMeta();
+            },
+            child: const Text('Save',
+                style: TextStyle(color: _kAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editCover() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      dialogTitle: 'Choose cover image',
+    );
+    if (result == null || result.files.single.path == null) return;
+    if (!mounted) return;
+    final srcPath = result.files.single.path!;
+    final folder = context.read<MusicFolderProvider>().folder;
+    if (folder == null) return;
+    await _m3u.saveCover(folder, _name, srcPath);
+    if (!mounted) return;
+    final bytes = await File(srcPath).readAsBytes();
+    setState(() => _coverImageBytes = bytes);
+  }
+
+  void _deletePlaylist(BuildContext ctx) {
+    showDialog(
+      context: ctx,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF282828),
+        title: Text('Delete "$_name"?',
+            style: const TextStyle(color: Colors.white)),
+        content: const Text('This will permanently delete the playlist.',
+            style: TextStyle(color: Colors.white54)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await context.read<PlaylistProvider>().delete(_name);
+              if (mounted) Navigator.pop(context);
+            },
+            child: const Text('Delete',
+                style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _remove(int index) async {
     final removed = _songs[index];
     final before = List<Song>.from(_songs);
     setState(() => _songs = List<Song>.from(_songs)..removeAt(index));
     await context
         .read<PlaylistProvider>()
-        .removeSong(widget.playlistName, index, before);
+        .removeSong(_name, index, before);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('"${removed.title}" removed'),
@@ -67,7 +331,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
           _songs.first,
           source: _songs,
           index: 0,
-          sourceName: widget.playlistName,
+          sourceName: _name,
         );
   }
 
@@ -79,7 +343,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
       _songs.first,
       source: _songs,
       index: 0,
-      sourceName: widget.playlistName,
+      sourceName: _name,
     );
   }
 
@@ -87,7 +351,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
     final playlists = context
         .read<PlaylistProvider>()
         .playlists
-        .where((p) => p != widget.playlistName)
+        .where((p) => p != _name)
         .toList();
     if (playlists.isEmpty) {
       ScaffoldMessenger.of(ctx).showSnackBar(
@@ -148,7 +412,8 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
   @override
   Widget build(BuildContext context) {
     final isShuffled = context.watch<PlayerProvider>().isShuffled;
-    final coverArt = _songs.isNotEmpty ? _songs.first.albumArt : null;
+    // Prefer user-picked cover, else fall back to first song's embedded art
+    final coverArt = _coverImageBytes ?? (_songs.isNotEmpty ? _songs.first.albumArt : null);
 
     return Scaffold(
       backgroundColor: const Color(0xFF121319),
@@ -175,7 +440,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
                     onPressed: () => Navigator.pop(context),
                   ),
                   title: Text(
-                    widget.playlistName,
+                    _name,
                     style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -204,7 +469,8 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
                   flexibleSpace: FlexibleSpaceBar(
                     collapseMode: CollapseMode.pin,
                     background: _PlaylistHeader(
-                      name: widget.playlistName,
+                      name: _name,
+                      description: _description,
                       songCount: _songs.length,
                       coverArt: coverArt,
                     ),
@@ -219,6 +485,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
                     isShuffled: isShuffled,
                     onPlay: _playAll,
                     onShuffle: _shufflePlay,
+                    onMore: () => _showMoreSheet(context),
                   ),
                 ),
 
@@ -318,11 +585,13 @@ const _kColHeader = TextStyle(
 
 class _PlaylistHeader extends StatelessWidget {
   final String name;
+  final String description;
   final int songCount;
   final Uint8List? coverArt;
 
   const _PlaylistHeader({
     required this.name,
+    required this.description,
     required this.songCount,
     required this.coverArt,
   });
@@ -407,6 +676,20 @@ class _PlaylistHeader extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 16),
+                    if (description.isNotEmpty) ...
+                      [
+                        Text(
+                          description,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                     Row(
                       children: [
                         const Text('My Library',
@@ -442,12 +725,14 @@ class _ActionBarDelegate extends SliverPersistentHeaderDelegate {
   final bool isShuffled;
   final VoidCallback onPlay;
   final VoidCallback onShuffle;
+  final VoidCallback onMore;
 
   const _ActionBarDelegate({
     required this.songCount,
     required this.isShuffled,
     required this.onPlay,
     required this.onShuffle,
+    required this.onMore,
   });
 
   @override
@@ -518,12 +803,12 @@ class _ActionBarDelegate extends SliverPersistentHeaderDelegate {
 
               const SizedBox(width: 20),
 
-              // More options (stub)
+              // More options
               IconButton(
                 iconSize: 22,
                 padding: EdgeInsets.zero,
                 icon: const Icon(Icons.more_horiz, color: Color(0xFF888888)),
-                onPressed: () {},
+                onPressed: onMore,
               ),
             ],
           ),
