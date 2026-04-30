@@ -142,46 +142,48 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
           SafeArea(
             child: Column(
               children: [
-                // Top bar: X button + NOW PLAYING label + spacer
+                // Top bar: X button (left) + NOW PLAYING (center) + spacer (right)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
-                  child: Stack(
-                    alignment: Alignment.center,
+                  child: Row(
                     children: [
-                      // Collapse handle centered
-                      Column(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Colors.white24,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'NOW PLAYING',
-                            style: TextStyle(
-                              color: Colors.white54,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.4,
-                            ),
-                          ),
-                        ],
+                      // X button — top-left corner
+                      IconButton(
+                        iconSize: 22,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                            minWidth: 40, minHeight: 40),
+                        icon: const Icon(Icons.close, color: Colors.white54),
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.pop(context),
                       ),
-                      // X button top-left
-                      Positioned(
-                        left: 4,
-                        top: 0,
-                        child: IconButton(
-                          iconSize: 22,
-                          icon: const Icon(Icons.close, color: Colors.white54),
-                          tooltip: 'Close',
-                          onPressed: () => Navigator.pop(context),
+                      // Centered label + handle
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: Colors.white24,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'NOW PLAYING',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.4,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      // Balancing spacer so label stays truly centered
+                      const SizedBox(width: 40),
                     ],
                   ),
                 ),
