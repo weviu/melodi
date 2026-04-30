@@ -86,7 +86,7 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _selectedIndex = 2;
+  int _selectedIndex = 0;
   late final List<Widget> _pages;
 
   @override

@@ -91,6 +91,11 @@ class DatabaseHelper {
     await db.delete('songs');
   }
 
+  Future<void> deleteSong(String filePath) async {
+    final db = await database;
+    await db.delete('songs', where: 'file_path = ?', whereArgs: [filePath]);
+  }
+
   Future<void> incrementPlayCount(String filePath) async {
     final db = await database;
     await db.execute(

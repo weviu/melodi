@@ -310,6 +310,7 @@ class _LibraryPageState extends State<LibraryPage> {
                     (context, i) => _SongRow(
                       song: _songs[i],
                       allSongs: _songs,
+                      onDeleted: _loadFromDb,
                     ),
                     childCount: _songs.length,
                   ),
@@ -619,8 +620,13 @@ class _PlaylistCardState extends State<_PlaylistCard> {
 class _SongRow extends StatefulWidget {
   final Song song;
   final List<Song> allSongs;
+  final VoidCallback onDeleted;
 
-  const _SongRow({required this.song, required this.allSongs});
+  const _SongRow({
+    required this.song,
+    required this.allSongs,
+    required this.onDeleted,
+  });
 
   @override
   State<_SongRow> createState() => _SongRowState();
@@ -642,6 +648,7 @@ class _SongRowState extends State<_SongRow> {
           index: widget.allSongs.indexOf(widget.song),
           sourceName: 'Library',
         ),
+        onSecondaryTap: () => _showSongMenu(context),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           color: _hovered ? kHoverBg : Colors.transparent,
@@ -760,35 +767,102 @@ class _SongRowState extends State<_SongRow> {
               ),
             ),
             const Divider(color: Color(0xFF333333)),
-            if (playlists.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(20),
-                child: Text('No playlists yet',
-                    style: TextStyle(color: kTextSecondary)),
+            // Add to queue
+            ListTile(
+              leading: const Icon(Icons.queue_music, color: kTextSecondary),
+              title: const Text('Add to queue',
+                  style: TextStyle(color: kTextPrimary)),
+              onTap: () {
+                Navigator.pop(context);
+                context.read<PlayerProvider>().addToQueue(widget.song);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Added to queue')),
+                );
+              },
+            ),
+            // Add to playlist submenu trigger
+            if (playlists.isNotEmpty)
+              ExpansionTile(
+                leading: const Icon(Icons.playlist_add, color: kTextSecondary),
+                title: const Text('Add to playlist',
+                    style: TextStyle(color: kTextPrimary)),
+                iconColor: kTextSecondary,
+                collapsedIconColor: kTextSecondary,
+                children: playlists
+                    .map(
+                      (name) => ListTile(
+                        contentPadding:
+                            const EdgeInsets.only(left: 56, right: 16),
+                        title: Text(name,
+                            style: const TextStyle(color: kTextPrimary)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context
+                              .read<PlaylistProvider>()
+                              .addSong(name, widget.song, widget.allSongs);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Added to $name')),
+                          );
+                        },
+                      ),
+                    )
+                    .toList(),
               )
             else
-              ...playlists.map(
-                (name) => ListTile(
-                  leading:
-                      const Icon(Icons.playlist_add, color: kTextSecondary),
-                  title: Text(name,
-                      style: const TextStyle(color: kTextPrimary)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    context
-                        .read<PlaylistProvider>()
-                        .addSong(name, widget.song, widget.allSongs);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content:
-                              Text('Added to $name')),
-                    );
-                  },
-                ),
+              const ListTile(
+                leading: Icon(Icons.playlist_add, color: kTextSecondary),
+                title: Text('Add to playlist',
+                    style: TextStyle(color: kTextSecondary)),
               ),
+            // Delete song
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Delete song',
+                  style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmDelete(context);
+              },
+            ),
             const SizedBox(height: 8),
           ],
         ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: kHoverBg,
+        title: const Text('Delete song?',
+            style: TextStyle(color: kTextPrimary)),
+        content: Text(
+          'This will remove "${widget.song.title}" from your library. The file will not be deleted from disk.',
+          style: const TextStyle(color: kTextSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child:
+                const Text('Cancel', style: TextStyle(color: kTextSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await DatabaseHelper().deleteSong(widget.song.filePath);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Song removed from library')),
+                );
+                widget.onDeleted();
+              }
+            },
+            child:
+                const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }
