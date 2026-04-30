@@ -1,6 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
+import '../data/database_helper.dart';
 import '../data/song_model.dart';
 
 enum LoopMode { off, loopPlaylist, loopSong }
@@ -23,6 +24,7 @@ class PlayerProvider extends ChangeNotifier {
 
   bool _isPlaying = false;
   bool _isShuffled = false;
+  bool _playCountCredited = false;
   LoopMode _loopMode = LoopMode.off;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
@@ -61,6 +63,14 @@ class PlayerProvider extends ChangeNotifier {
     _player.onPositionChanged.listen((pos) {
       _position = pos;
       notifyListeners();
+      // Credit play count once per song at 50% duration or 4 minutes
+      if (!_playCountCredited && _currentSong != null && _duration.inSeconds > 0) {
+        final halfwaySecs = _duration.inSeconds / 2;
+        if (_position.inSeconds >= halfwaySecs || _position.inSeconds >= 240) {
+          _playCountCredited = true;
+          DatabaseHelper().incrementPlayCount(_currentSong!.filePath);
+        }
+      }
     });
     _player.onDurationChanged.listen((dur) {
       _duration = dur;
@@ -90,8 +100,18 @@ class PlayerProvider extends ChangeNotifier {
     _currentSong = song;
     _position = Duration.zero;
     _duration = Duration.zero;
+    _playCountCredited = false;
     notifyListeners();
     await _player.play(DeviceFileSource(song.filePath));
+    // Track recent items (fire-and-forget)
+    final db = DatabaseHelper();
+    if (_sourceName != 'Library') {
+      db.insertOrUpdateRecentItem('playlist', _sourceName);
+    }
+    final artist = song.artist.trim();
+    if (artist.isNotEmpty && artist.toLowerCase() != 'unknown artist') {
+      db.insertOrUpdateRecentItem('artist', artist);
+    }
   }
 
   Future<void> togglePlayPause() async {

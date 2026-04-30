@@ -87,12 +87,20 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _selectedIndex = 2;
+  late final List<Widget> _pages;
 
-  static const List<Widget> _pages = [
-    HomePage(),
-    SearchPage(),
-    LibraryPage(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      HomePage(
+        onGoToSearch: () => setState(() => _selectedIndex = 1),
+        onGoToLibrary: () => setState(() => _selectedIndex = 2),
+      ),
+      const SearchPage(),
+      const LibraryPage(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
