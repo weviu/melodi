@@ -22,17 +22,48 @@ API_KEY: str = os.environ["MELODI_API_KEY"]
 
 # Optional YouTube cookies file to bypass bot detection
 _COOKIES_FILE = Path("/var/lib/melodi-server/youtube-cookies.txt")
+_COOKIES_LOCK = __import__("threading").Lock()
 
-def _yt_base_args() -> list[str]:
+
+def _yt_base_args(cookies_path: str | None = None) -> list[str]:
     """Common yt-dlp args applied to every call."""
     args = [
         "--extractor-args", "youtube:player_client=web",
         "--js-runtime", "node",
         "--cache-dir", "/tmp/yt-dlp-cache",
     ]
-    if _COOKIES_FILE.exists():
+    if cookies_path:
+        args += ["--cookies", cookies_path]
+    elif _COOKIES_FILE.exists():
         args += ["--cookies", str(_COOKIES_FILE)]
     return args
+
+
+def _copy_cookies(dest_dir: str) -> str | None:
+    """Copy the master cookies file into dest_dir so yt-dlp can write freely."""
+    with _COOKIES_LOCK:
+        if not _COOKIES_FILE.exists():
+            return None
+        dest = os.path.join(dest_dir, "cookies.txt")
+        shutil.copy2(str(_COOKIES_FILE), dest)
+    os.chmod(dest, 0o600)
+    return dest
+
+
+def _sync_cookies(tmp_cookies: str) -> None:
+    """Copy updated cookies from the per-request temp file back to master.
+
+    yt-dlp writes refreshed YouTube session tokens into the temp file.
+    Syncing back keeps the master file current so future requests stay
+    authenticated.  Guarded by a lock to avoid concurrent-write corruption.
+    """
+    if not tmp_cookies or not os.path.exists(tmp_cookies):
+        return
+    with _COOKIES_LOCK:
+        try:
+            shutil.copy2(tmp_cookies, str(_COOKIES_FILE))
+        except OSError as e:
+            logger.warning("cookies sync failed: %s", e)
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 
@@ -164,11 +195,15 @@ async def download(
     tmp_dir = tempfile.mkdtemp(prefix="melodi_")
 
     try:
+        # Per-request writable copy of cookies — prevents yt-dlp from
+        # overwriting the master file (which would strip auth cookies).
+        cookies = _copy_cookies(tmp_dir)
+
         # Fetch metadata (title / artist) before downloading
         meta_proc = subprocess.run(
             [
                 "yt-dlp", "--dump-single-json", "--no-warnings", "--quiet",
-                *_yt_base_args(),
+                *_yt_base_args(cookies),
                 body.url,
             ],
             capture_output=True,
@@ -176,10 +211,16 @@ async def download(
             timeout=30,
         )
         title, artist = "Unknown", "Unknown"
-        if meta_proc.returncode == 0:
-            meta = json.loads(meta_proc.stdout)
-            title = meta.get("title") or "Unknown"
-            artist = meta.get("channel") or meta.get("uploader") or "Unknown"
+        # Parse metadata even if returncode != 0 — cookies save PermissionError
+        # fires after fetch, stdout may still contain valid JSON.
+        if meta_proc.stdout.strip():
+            try:
+                meta = json.loads(meta_proc.stdout)
+                if meta and isinstance(meta, dict):
+                    title = meta.get("title") or "Unknown"
+                    artist = meta.get("channel") or meta.get("uploader") or "Unknown"
+            except (json.JSONDecodeError, AttributeError):
+                pass
 
         # Download and convert to MP3
         dl_proc = subprocess.run(
@@ -191,7 +232,7 @@ async def download(
                 "--concurrent-fragments", "4",
                 "--embed-thumbnail",
                 "--add-metadata",
-                *_yt_base_args(),
+                *_yt_base_args(cookies),
                 "-o", os.path.join(tmp_dir, "%(title)s.%(ext)s"),
                 "--no-warnings",
                 "--quiet",
@@ -200,12 +241,11 @@ async def download(
             capture_output=True,
             timeout=300,
         )
-        if dl_proc.returncode != 0:
-            raise RuntimeError(dl_proc.stderr.decode(errors="replace"))
-
         mp3_files = list(Path(tmp_dir).glob("*.mp3"))
         if not mp3_files:
-            raise RuntimeError("yt-dlp produced no mp3 file")
+            # Only surface the yt-dlp error when no output was produced.
+            err = dl_proc.stderr.decode(errors="replace")
+            raise RuntimeError(err or "yt-dlp produced no mp3 file")
 
         mp3_path = mp3_files[0]
         file_size = mp3_path.stat().st_size
@@ -216,6 +256,9 @@ async def download(
                     while chunk := fh.read(64 * 1024):
                         yield chunk
             finally:
+                # Sync refreshed YouTube session tokens back to master file
+                # before cleaning up, so the next request stays authenticated.
+                _sync_cookies(cookies)
                 shutil.rmtree(tmp_dir, ignore_errors=True)
 
         encoded_filename = urllib.parse.quote(mp3_path.name)

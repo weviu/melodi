@@ -35,6 +35,12 @@ void main() async {
 
   // Request runtime permissions on Android before anything else
   if (Platform.isAndroid) {
+    // MANAGE_EXTERNAL_STORAGE (Android 11+) lets the user pick any folder for
+    // their music library and have the app write downloaded files there.
+    // This opens the system "Allow access to manage all files" settings screen.
+    if (!await Permission.manageExternalStorage.isGranted) {
+      await Permission.manageExternalStorage.request();
+    }
     await [
       Permission.audio,        // READ_MEDIA_AUDIO
       Permission.notification, // POST_NOTIFICATIONS (mandatory Android 13+)
