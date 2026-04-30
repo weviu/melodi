@@ -47,7 +47,16 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PlayerProvider()),
         ChangeNotifierProvider(create: (_) => MusicFolderProvider()),
         ChangeNotifierProvider(create: (_) => DownloadProvider()),
-        ChangeNotifierProvider(create: (_) => PlaylistProvider()),
+        // PlaylistProvider auto-loads when MusicFolderProvider's folder changes
+        ChangeNotifierProxyProvider<MusicFolderProvider, PlaylistProvider>(
+          create: (_) => PlaylistProvider(),
+          update: (_, folderProvider, playlistProvider) {
+            final folder = folderProvider.folder;
+            final provider = playlistProvider ?? PlaylistProvider();
+            if (folder != null) provider.load(folder);
+            return provider;
+          },
+        ),
       ],
       child: const MelodiApp(),
     ),

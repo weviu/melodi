@@ -20,6 +20,20 @@ load_dotenv()
 
 API_KEY: str = os.environ["MELODI_API_KEY"]
 
+# Optional YouTube cookies file to bypass bot detection
+_COOKIES_FILE = Path("/var/lib/melodi-server/youtube-cookies.txt")
+
+def _yt_base_args() -> list[str]:
+    """Common yt-dlp args applied to every call."""
+    args = [
+        "--extractor-args", "youtube:player_client=web",
+        "--js-runtime", "node",
+        "--cache-dir", "/tmp/yt-dlp-cache",
+    ]
+    if _COOKIES_FILE.exists():
+        args += ["--cookies", str(_COOKIES_FILE)]
+    return args
+
 # ── Logging ────────────────────────────────────────────────────────────────────
 
 Path("logs").mkdir(exist_ok=True)
@@ -91,14 +105,19 @@ async def search(
                 "--dump-single-json",
                 "--no-warnings",
                 "--quiet",
-                "--extractor-args", "youtube:player_client=ios,web",
+                *_yt_base_args(),
             ],
             capture_output=True,
             text=True,
             timeout=30,
         )
         if result.returncode != 0:
-            raise RuntimeError(result.stderr)
+            # Filter out yt-dlp WARNING lines, show only the real error
+            error = '\n'.join(
+                l for l in result.stderr.splitlines()
+                if not l.startswith('WARNING:')
+            ).strip() or result.stderr
+            raise RuntimeError(error)
 
         data = json.loads(result.stdout)
         entries = data.get("entries") or []
@@ -121,7 +140,9 @@ async def search(
 
     except Exception as exc:
         _log(request, "GET /search", x_api_key, False)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        # Extract only the last meaningful error line, drop tracebacks
+        msg = str(exc).splitlines()[-1] if str(exc).strip() else str(exc)
+        raise HTTPException(status_code=500, detail=msg) from exc
 
 
 # ── POST /download ─────────────────────────────────────────────────────────────
@@ -147,7 +168,7 @@ async def download(
         meta_proc = subprocess.run(
             [
                 "yt-dlp", "--dump-single-json", "--no-warnings", "--quiet",
-                "--extractor-args", "youtube:player_client=ios,web",
+                *_yt_base_args(),
                 body.url,
             ],
             capture_output=True,
@@ -170,7 +191,7 @@ async def download(
                 "--concurrent-fragments", "4",
                 "--embed-thumbnail",
                 "--add-metadata",
-                "--extractor-args", "youtube:player_client=ios,web",
+                *_yt_base_args(),
                 "-o", os.path.join(tmp_dir, "%(title)s.%(ext)s"),
                 "--no-warnings",
                 "--quiet",
