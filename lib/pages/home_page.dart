@@ -41,19 +41,28 @@ class _HomePageState extends State<HomePage> {
 
   Song? _lastTrackedSong;
   late final PlayerProvider _player;
+  late final PlaylistProvider _playlists;
 
   @override
   void initState() {
     super.initState();
     _player = context.read<PlayerProvider>();
+    _playlists = context.read<PlaylistProvider>();
     _player.addListener(_onPlayerChanged);
+    _playlists.addListener(_onPlaylistsChanged);
     _loadData();
   }
 
   @override
   void dispose() {
     _player.removeListener(_onPlayerChanged);
+    _playlists.removeListener(_onPlaylistsChanged);
     super.dispose();
+  }
+
+  void _onPlaylistsChanged() {
+    if (!mounted) return;
+    _loadData();
   }
 
   void _onPlayerChanged() {
@@ -70,23 +79,23 @@ class _HomePageState extends State<HomePage> {
     final playlists = context.read<PlaylistProvider>().playlists;
 
     final recent = await _db.getRecentItems();
+    // Only show playlists in recently played (artist detail page not yet implemented)
+    final recentPlaylists =
+        recent.where((i) => i['item_type'] == 'playlist').toList();
 
     // Preload artwork for recent items
     final recentArt = <String, Uint8List?>{};
-    for (final item in recent) {
+    for (final item in recentPlaylists) {
       final type = item['item_type'] as String;
       final id = item['item_id'] as String;
       final key = '$type:$id';
-      if (type == 'playlist' && folder != null) {
+      if (folder != null) {
         final path = await _m3u.coverPath(folder, id);
         if (path != null) {
           try {
             recentArt[key] = await File(path).readAsBytes();
           } catch (_) {}
         }
-      } else if (type == 'artist') {
-        final song = await _db.getSongWithArtByArtist(id);
-        recentArt[key] = song?.albumArt;
       }
     }
 
@@ -116,7 +125,7 @@ class _HomePageState extends State<HomePage> {
 
     if (!mounted) return;
     setState(() {
-      _recentItems = recent;
+      _recentItems = recentPlaylists;
       _recentArtCache = recentArt;
       _topArtists = artists;
       _artistArtCache = artistArt;
